@@ -17,3 +17,14 @@ Zstandard (zstd) is a high-performance, lossless data compression algorithm deve
 
 # tools used:
 - for unzipping lichess data: `zstandard`
+
+# Missing Values Issues
+
+## 1. Anonymous players: 
+The platforms allows the players to play anonymously, I think most probably that's the reason behind the missing Elos for black and white.
+
+white_elo             78
+black_elo            140
+white_rating_diff    218
+black_rating_diff    218
+
