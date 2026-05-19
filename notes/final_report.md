@@ -1,5 +1,8 @@
-
 I am treating this project as if this MLOPS pipeline is being deployed on lichess and treating myself as an real engineer at Lichess :-)
+
+# IDEAS:
+- We can also present this as a chess coach MLOPS project. 
+
 
 # #1 
 I am going to treat the 2013 Jan's data as our recent data and train it on the first week of the data then slowly move to next week and so on and so forth.
@@ -28,3 +31,12 @@ black_elo            140
 white_rating_diff    218
 black_rating_diff    218
 
+## 2. Column Inspection
+Event: Didn't found any missing values
+site: Some are empty but it works as this variable won't be used in model training
+date: Is empty. But I think we have utc_date column
+
+
+# Weird#1
+Why does the addition of black_elo and white_elo sum becomes the number of black_rating_diff and white_rating_diff. This appears weird to me.
+Maybe, I should understand what is elo and how it is calculated.
