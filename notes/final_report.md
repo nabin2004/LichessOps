@@ -2,6 +2,7 @@ I am treating this project as if this MLOPS pipeline is being deployed on liches
 
 # IDEAS:
 - We can also present this as a chess coach MLOPS project. 
+- Let's keep the privacy of users in mind, we can do sth to username.
 
 
 # #1 
@@ -40,3 +41,8 @@ date: Is empty. But I think we have utc_date column
 # Weird#1
 Why does the addition of black_elo and white_elo sum becomes the number of black_rating_diff and white_rating_diff. This appears weird to me.
 Maybe, I should understand what is elo and how it is calculated.
+
+
+# Common patterns:
+- List the unique values
+- List the missing count, rows
