@@ -1,6 +1,7 @@
+from .config_loader import load_config
 from .logger import get_logger, setup_logging
 
-__all__ = ["LichessException", "get_logger", "setup_logging"]
+__all__ = ["LichessException", "get_logger", "load_config", "setup_logging"]
 
 
 def __getattr__(name: str):

@@ -1,0 +1,3 @@
+# Shared defaults for all components (merged with package-specific overrides).
+logging:
+  level: INFO
