@@ -13,7 +13,14 @@ Reference institutional policies only when they materially affect component choi
 \section{Stage coverage: ingestion through monitoring}
 \label{sec:pipeline-stages-global}
 
-Across~\crefrange{sec:stage-ingestion}{sec:stage-monitoring}, answer the mandated \textit{what, why, who, how} prompts for tangible inputs, artefacts, escalation paths, and observability checkpoints.
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\linewidth}{!}{\input{tikz/diagrams/mlops-pipeline}}
+  \caption{End-to-end MLOps architecture: data plane (top) feeding analytics and modelling consumers; control plane (bottom) orchestrating Airflow DAGs, MLflow runs, and observability; monitoring closes the loop back toward ingestion through a retrain trigger.}
+  \label{fig:mlops-pipeline}
+\end{figure}
+
+Across~\crefrange{sec:stage-ingestion}{sec:stage-monitoring} (depicted holistically in~\cref{fig:mlops-pipeline}), answer the mandated \textit{what, why, who, how} prompts for tangible inputs, artefacts, escalation paths, and observability checkpoints.
 
 \section{Data ingestion}
 \label{sec:stage-ingestion}

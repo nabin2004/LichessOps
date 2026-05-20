@@ -1,0 +1,157 @@
+% Publication-grade TikZ design system for MLOps diagrams (CMP6230 report).
+% Oxford Blue + Burgundy palette; loaded via \input{tikz/mlops-styles}.
+
+\newdimen\mlopsStageTextWd
+\mlopsStageTextWd=27mm
+
+% --- Palette ---------------------------------------------------------------
+\definecolor{oxfordPrimary}{RGB}{11,37,69}
+\definecolor{oxfordPrimarySoft}{RGB}{36,67,108}
+\definecolor{accentBurgundy}{RGB}{140,47,57}
+\definecolor{dataplaneTint}{RGB}{238,242,248}
+\definecolor{controlplaneTint}{RGB}{244,241,236}
+\definecolor{cardFill}{RGB}{255,255,255}
+\definecolor{cardSubtle}{RGB}{250,250,248}
+\definecolor{inkBody}{RGB}{40,46,58}
+\definecolor{inkMuted}{RGB}{95,105,120}
+
+% Back-compat aliases (older diagrams / drafts)
+\colorlet{mlopsDataplaneBg}{dataplaneTint}
+\colorlet{mlopsControlBg}{controlplaneTint}
+\colorlet{mlopsStageFill}{cardFill}
+\colorlet{mlopsStageBorder}{oxfordPrimary}
+\colorlet{mlopsSubstageFill}{cardSubtle}
+\colorlet{mlopsAccent}{accentBurgundy}
+
+\tikzset{
+  % Outer shell for pipeline stages (used by \mlopsStage)
+  mlops stage shell/.style={
+    rounded corners=5pt,
+    draw=oxfordPrimary,
+    line width=0.65pt,
+    fill=cardFill,
+    align=center,
+    inner sep=8pt,
+    minimum width=31mm,
+    text width=31mm,
+    font=\scriptsize,
+    text=inkBody,
+  },
+  mlops stage badge/.style={
+    circle,
+    fill=white,
+    text=oxfordPrimary,
+    font=\fontsize{7}{7}\selectfont\sffamily\bfseries,
+    inner sep=0pt,
+    minimum size=5mm,
+    draw=white,
+    line width=0.35pt,
+  },
+  mlops substage/.style={
+    rounded corners=4pt,
+    draw=oxfordPrimarySoft,
+    line width=0.55pt,
+    fill=cardSubtle,
+    align=center,
+    inner sep=5pt,
+    font=\footnotesize,
+    text=inkBody,
+    text width=31mm,
+  },
+  mlops dataarrow/.style={
+    -{Stealth[length=2.5mm,width=1.75mm]},
+    line width=0.7pt,
+    draw=oxfordPrimary,
+    rounded corners=1.5pt,
+    shorten >=1.8pt,
+    shorten <=1.8pt,
+  },
+  mlops feedbackarrow/.style={
+    -{Stealth[length=2.2mm,width=1.55mm]},
+    line width=0.65pt,
+    dashed,
+    draw=accentBurgundy,
+    rounded corners=2pt,
+    shorten >=1.5pt,
+    shorten <=1.5pt,
+  },
+  mlops feedback label/.style={
+    fill=white,
+    draw=accentBurgundy!58,
+    rounded corners=2pt,
+    inner sep=2.5pt,
+    font=\tiny\sffamily\bfseries,
+    text=accentBurgundy,
+  },
+  mlops swimlane fill/.style={
+    rounded corners=7pt,
+    inner sep=11pt,
+  },
+  mlops swimlane title pill/.style={
+    fill=white,
+    draw=oxfordPrimarySoft!55,
+    rounded corners=2.5pt,
+    inner sep=3pt,
+    font=\footnotesize\scshape,
+    text=oxfordPrimary,
+  },
+  mlops persona/.style={
+    circle,
+    draw=oxfordPrimarySoft,
+    line width=0.55pt,
+    fill=white,
+    minimum size=7.5mm,
+    inner sep=0pt,
+    font=\scriptsize,
+    text=inkBody,
+  },
+  mlops persona link/.style={
+    draw=oxfordPrimarySoft!70,
+    dotted,
+    line width=0.45pt,
+    -,
+    shorten >=1pt,
+    shorten <=1pt,
+  },
+  mlops ctrl link/.style={
+    draw=oxfordPrimarySoft!35,
+    dotted,
+    line width=0.4pt,
+    -,
+    shorten >=1.5pt,
+    shorten <=1.5pt,
+  },
+  mlops legend container/.style={
+    rounded corners=4pt,
+    draw=oxfordPrimarySoft!45,
+    fill=white,
+    inner sep=6pt,
+    font=\footnotesize\sffamily,
+    text=inkBody,
+  },
+}
+
+% Stage card: \mlopsStage[<node keys>]{name}{number}{icons}{title}{body}
+\newcommand{\mlopsStage}[6][]{% #1 optional positioning/style keys
+  \node[mlops stage shell, #1] (#2) {%
+    \begin{minipage}{\mlopsStageTextWd}%
+      \centering
+      \setlength{\fboxsep}{5pt}%
+      \colorbox{oxfordPrimary}{%
+        \parbox[c][7.5mm][c]{\dimexpr\linewidth-10pt}{%
+          \makebox[\dimexpr\linewidth-10pt][c]{%
+            \raisebox{-0.6pt}{\tikz[baseline=-1mm]{\node[mlops stage badge]{#3};}}%
+            \kern4pt%
+            \textbf{\textcolor{white}{\small #5}}%
+          }%
+        }%
+      }\par\vspace{4pt}%
+      {\centering\mbox{#4}\par}%
+      \vspace{4pt}%
+      {\centering\footnotesize\color{inkMuted}#6\par}%
+    \end{minipage}%
+  };%
+}
+
+% Two-tool icon row for stage bodies (PNG / Simple Icons fallback align uniformly).
+\newcommand{\mlopsToolPair}[2]{\raisebox{-1pt}{\hbox{#1\kern1.5pt#2}}}

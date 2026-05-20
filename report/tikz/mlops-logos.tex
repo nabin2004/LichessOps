@@ -1,0 +1,25 @@
+% Hybrid logos: prefer files under figures/logos/ (\graphicspath),
+% else Simple Icons font glyphs. Loaded after graphicx + simpleicons.
+
+\newcommand{\MLOpsLogo}[4]{%
+  \IfFileExists{#1.png}{%
+    \includegraphics[height=#4]{#1.png}%
+  }{%
+    \IfFileExists{#1.pdf}{%
+      \includegraphics[height=#4]{#1.pdf}%
+    }{%
+      \resizebox{!}{#4}{\mbox{\simpleicon{#2}}}%
+    }%
+  }%
+}
+
+\newcommand{\AirflowLogo}[1][9mm]{\MLOpsLogo{airflow}{apacheairflow}{Airflow}{#1}}
+\newcommand{\KafkaLogo}[1][9mm]{\MLOpsLogo{kafka}{apachekafka}{Kafka}{#1}}
+\newcommand{\SparkLogo}[1][9mm]{\MLOpsLogo{spark}{apachespark}{Spark}{#1}}
+\newcommand{\MLflowLogo}[1][9mm]{\MLOpsLogo{mlflow}{mlflow}{MLflow}{#1}}
+\newcommand{\DockerLogo}[1][9mm]{\MLOpsLogo{docker}{docker}{Docker}{#1}}
+\newcommand{\KubernetesLogo}[1][9mm]{\MLOpsLogo{kubernetes}{kubernetes}{Kubernetes}{#1}}
+\newcommand{\PrometheusLogo}[1][9mm]{\MLOpsLogo{prometheus}{prometheus}{Prometheus}{#1}}
+\newcommand{\GrafanaLogo}[1][9mm]{\MLOpsLogo{grafana}{grafana}{Grafana}{#1}}
+\newcommand{\DbtLogo}[1][9mm]{\MLOpsLogo{dbt}{dbt}{dbt}{#1}}
+\newcommand{\JupyterLogo}[1][9mm]{\MLOpsLogo{jupyter}{jupyter}{Jupyter}{#1}}

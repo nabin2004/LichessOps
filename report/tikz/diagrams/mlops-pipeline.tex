@@ -1,0 +1,151 @@
+% End-to-end MLOps pipeline (Chapter 2). Requires mlops-styles + mlops-logos.
+\begin{tikzpicture}[
+  node distance=5mm and 6.5mm,
+  font=\scriptsize,
+]
+
+  % --- Data-plane stages ----------------------------------------------------
+  \mlopsStage{ingest}{1}{%
+    \mlopsToolPair{\AirflowLogo[6.5mm]}{\KafkaLogo[6.5mm]}%
+  }{Data ingestion}{%
+    Kafka topics, Airflow DAGs; landing zone (object store)%
+  }
+
+  \mlopsStage[right=of ingest]{preproc}{2}{%
+    \mlopsToolPair{\SparkLogo[6.5mm]}{\DbtLogo[6.5mm]}%
+  }{Pre-processing}{%
+    Spark jobs; curated tables (dbt tests)%
+  }
+
+  \mlopsStage[right=of preproc]{mdev}{3}{%
+    \mlopsToolPair{\MLflowLogo[6.5mm]}{\JupyterLogo[6.5mm]}%
+  }{Model development}{%
+    Experiments, notebooks, feature/label contracts%
+  }
+
+  \mlopsStage[right=of mdev]{deploy}{4}{%
+    \mlopsToolPair{\DockerLogo[6.5mm]}{\KubernetesLogo[6.5mm]}%
+  }{Deployment}{%
+    Containers, K8s rollout, model serving%
+  }
+
+  \mlopsStage[right=of deploy]{mon}{5}{%
+    \mlopsToolPair{\PrometheusLogo[6.5mm]}{\GrafanaLogo[6.5mm]}%
+  }{Monitoring}{%
+    Drift, SLOs, alerts; lineage hooks%
+  }
+
+  % --- Personas (above owning stages) ---------------------------------------
+  \node[mlops persona, above=5mm of preproc.north] (pa) {\faIcon{chart-line}};
+  \node[
+    font=\tiny\bfseries\sffamily,
+    anchor=north,
+    text=inkBody,
+  ] (pa-lbl) at ($(pa.south)+(0,-1pt)$) {Analyst};
+
+  \node[mlops persona, above=5mm of mdev.north] (pm) {\faIcon{flask}};
+  \node[
+    font=\tiny\bfseries\sffamily,
+    anchor=north,
+    text=inkBody,
+  ] (pm-lbl) at ($(pm.south)+(0,-1pt)$) {ML engineer};
+
+  \node[mlops persona, above=5mm of deploy.north] (pp) {\faIcon{server}};
+  \node[
+    font=\tiny\bfseries\sffamily,
+    anchor=north,
+    text=inkBody,
+  ] (pp-lbl) at ($(pp.south)+(0,-1pt)$) {Platform};
+
+  % --- Control-plane row ----------------------------------------------------
+  \node[mlops substage, below=11mm of ingest] (c-orch) {%
+    \textbf{Orchestration}\\
+    Airflow schedules; DAG lineage into warehouse
+  };
+
+  \node[mlops substage, below=11mm of mdev] (c-mlf) {%
+    \textbf{Experiment tracking / registry}\\
+    MLflow model versions; promotion gates
+  };
+
+  \node[mlops substage, below=11mm of mon] (c-obs) {%
+    \textbf{Observability stack}\\
+    Prometheus metrics; Grafana dashboards
+  };
+
+  % --- Swim-lane backgrounds ----------------------------------------------
+  \begin{scope}[on background layer]
+    \node[
+      fill=dataplaneTint,
+      mlops swimlane fill,
+      fit=(pa)(pa-lbl)(pm)(pm-lbl)(pp)(pp-lbl)(ingest)(preproc)(mdev)(deploy)(mon),
+    ] (lane-data-bg) {};
+    \node[
+      mlops swimlane title pill,
+      anchor=south west,
+    ] at ($(lane-data-bg.north west)+(5pt,-5pt)$) {Data plane};
+  \end{scope}
+
+  \begin{scope}[on background layer]
+    \node[
+      fill=controlplaneTint,
+      mlops swimlane fill,
+      fit=(c-orch)(c-mlf)(c-obs),
+      yshift=-1mm,
+    ] (lane-ctrl-bg) {};
+    \node[
+      mlops swimlane title pill,
+      anchor=south west,
+    ] at ($(lane-ctrl-bg.north west)+(5pt,-5pt)$) {Control and observability};
+  \end{scope}
+
+  % --- Feedback loop (behind foreground strokes) ----------------------------
+  \coordinate (fb-r) at ($(mon.south)+(0,-13mm)$);
+  \coordinate (fb-l) at ($(ingest.south)+(0,-13mm)$);
+  \begin{scope}[on background layer]
+    \draw[mlops feedbackarrow]
+      (mon.south) -- (fb-r)
+      .. controls ($(fb-r)+(-42mm,0)$) and ($(fb-l)+(42mm,0)$) .. (fb-l)
+      -- (ingest.south);
+    \node[mlops feedback label] at ($(fb-r)!0.5!(fb-l)-(0,7.5mm)$) {retrain trigger};
+  \end{scope}
+
+  % --- Primary data flow -----------------------------------------------------
+  \draw[mlops dataarrow] (ingest) -- (preproc);
+  \draw[mlops dataarrow] (preproc) -- (mdev);
+  \draw[mlops dataarrow] (mdev) -- (deploy);
+  \draw[mlops dataarrow] (deploy) -- (mon);
+
+  % --- Stage ↔ persona -------------------------------------------------------
+  \draw[mlops persona link] (pa.south) -- (preproc.north);
+  \draw[mlops persona link] (pm.south) -- (mdev.north);
+  \draw[mlops persona link] (pp.south) -- (deploy.north);
+
+  % --- Control-plane coupling -----------------------------------------------
+  \draw[mlops ctrl link] (c-orch.north) -- (ingest.south);
+  \draw[mlops ctrl link] (c-mlf.north) -- (mdev.south);
+  \draw[mlops ctrl link] (c-obs.north) -- (mon.south);
+
+  % --- Legend ---------------------------------------------------------------
+  \node[
+    mlops legend container,
+    below=10mm of lane-ctrl-bg.south,
+    anchor=north,
+  ] (legend) {%
+    \begin{tabular}{@{}r@{ }l@{ \qquad }r@{ }l@{ \qquad }r@{ }l@{}}%
+      \begin{tikzpicture}[baseline=-0.55ex]
+        \draw[mlops dataarrow] (0,0) -- (11mm,0);
+      \end{tikzpicture}%
+       & Data / artefact flow &
+      \begin{tikzpicture}[baseline=-0.55ex]
+        \draw[mlops feedbackarrow] (0,0) -- (11mm,0);
+      \end{tikzpicture}%
+       & Monitoring feedback &
+      \begin{tikzpicture}[baseline=-0.55ex]
+        \draw[mlops persona link] (0,0) -- (11mm,0);
+      \end{tikzpicture}%
+       & Role responsibility \\
+    \end{tabular}%
+  };
+
+\end{tikzpicture}
