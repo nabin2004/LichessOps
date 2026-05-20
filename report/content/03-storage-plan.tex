@@ -1,0 +1,69 @@
+\chapter{Storage planning for analytical workloads (Exercise 1, Step 3)}
+\label{ch:storage-planning}
+
+The pipeline discussions in~\cref{ch:pipeline-planning} converge on resilient storage artefacts that simultaneous satisfy SQL-friendly exploration plus bulk reads for modelling.
+
+\section{Recap of source artefacts}
+\label{sec:storage-source-recap}
+
+Reiterate ingestion format, fidelity guarantees, cryptographic or privacy constraints, ingestion SLAs (e.g.,\ allowable staleness versus batch windows), duplication policies.
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{%
+    \begin{minipage}{0.88\linewidth}
+      \centering
+      \vspace{1.7cm}
+      \textbf{Source-data ERD or schema diagram}\\[0.6em]
+      \small Map entities, cardinality, versioning keys, ingestion offsets\\
+      Final PDF or SVG exports live under {\ttfamily figures/}\\\vspace{1.8cm}
+    \end{minipage}}
+  \caption{Draft depiction of authoritative source structure.}
+  \label{fig:storage-source-erd}
+\end{figure}
+
+\section{Logical models after ingestion}
+\label{sec:logical-model}
+
+Discuss grain decisions, surrogate keys for historised attributes, conformance layers aligning analytics vocabulary versus operational names, Slowly Changing Dimensions if applicable.
+
+\section{Physical manifestations}
+\label{sec:physical-model}
+
+Enumerate storage engines (e.g.,\ warehouse versus lakehouse partitions), partitioning keys, compaction cadence, index families, archival tiers, costing guardrails mirroring~\cref{ch:pipeline-planning}.
+
+\section{Extract-load-transform choreography}
+\label{sec:storage-etl}
+
+Document orchestration lineage from landing zone toward curated analytic tables referencing monitoring hooks from ingestion steps.
+
+\section{Alternative modelling patterns and trade-offs}
+\label{sec:alternative-models}
+
+Use~\cref{tab:storage-pattern-tradeoffs} to contrast one-big-table motifs, dimensional models (star, snowflake hybrids), normalized relational warehouses, medallion-esque layering hybrids.
+Highlight benefits, drawbacks, query ergonomics versus join complexity, refactoring cost, elasticity for exploratory consumers.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Comparative storage strategy notes.}
+  \label{tab:storage-pattern-tradeoffs}
+  \footnotesize
+  \setlength{\tabcolsep}{5pt}
+  \renewcommand{\arraystretch}{1.12}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.26\linewidth} >{\raggedright\arraybackslash}p{0.32\linewidth} >{\raggedright\arraybackslash}p{0.36\linewidth}@{}}
+    \toprule
+    Approach & Upside articulation & Downside \& mitigation\\
+    \midrule
+    One big table & Populate & Populate\\
+    Star schema & Populate & Populate\\
+    Snowflake schema & Populate & Populate\\
+    Normalised relational & Populate & Populate\\
+    Evolution plan & Populate & Populate\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Operational acceptance}
+\label{sec:storage-acceptance}
+
+Connect storage choices explicitly to iterative reflections introduced later in~\cref{ch:reflection}; justify why unavoidable trade-offs remain acceptable relative to stakeholder objectives defined at the outset.

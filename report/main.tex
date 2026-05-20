@@ -1,0 +1,67 @@
+\documentclass[11pt,a4paper]{report}
+
+\input{metadata}
+\input{preamble}
+
+\begin{document}
+
+% Avoid duplicate Hyperref anchors on Title Page / first body page (pdfLaTeX)
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+  \centering
+
+  {\large \UniName\par}
+
+  \vspace*{3cm}
+
+  {\LARGE\bfseries \ReportTitle\par}
+
+  \vspace{0.75cm}
+
+  {\large \ModuleCode\quad\textemdash\quad\TaskName\par}
+
+  \vfill
+
+  \begin{tabular}{@{}rl@{}}
+    \textit{Student:}           & \StudentName \\[0.35em]
+    \textit{Student ID:}        & \StudentID \\[0.35em]
+    \textit{Programme of study:} & \DegreeName \\
+  \end{tabular}
+
+  \vspace{2.5cm}
+
+  {\large \today\par}
+\end{titlepage}
+\hypersetup{pageanchor=true}
+\cleardoublepage
+
+\chapter*{Abstract}
+\phantomsection
+\addcontentsline{toc}{chapter}{Abstract}
+
+This log report outlines the planning and design of a data management and analytics strategy for supervised machine learning within a chosen problem domain.
+It traces how candidate datasets are justified, how an end-to-end analytics pipeline satisfies reporting and modelling consumers, how data will be structured after ingestion with explicit trade-offs, and how these plans iterate as understanding improves.
+
+\tableofcontents
+\clearpage
+
+\listoffigures
+\listoftables
+\clearpage
+
+\input{content/01-candidate-datasets}
+\input{content/02-pipeline-design}
+\input{content/03-storage-plan}
+\input{content/04-reflection}
+
+\appendix
+
+\chapter{Supplementary material}
+\label{app:supplementary}
+
+Use this appendix for oversized diagrams or repeat tables referenced in the body.
+Keeping the narrative readable in the main chapters while placing detailed artefacts here is conventional for coursework and technical reports alike.
+
+\printbibliography[heading=bibintoc]
+
+\end{document}

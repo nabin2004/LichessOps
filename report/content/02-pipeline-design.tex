@@ -1,0 +1,89 @@
+\chapter{Pipeline planning and design (Exercise 1, Step 2)}
+\label{ch:pipeline-planning}
+
+Consumers split between interactive analytics (e.g.,\ notebooks, exploratory SQL, BI artefacts) and an automated supervised learning conveyor.
+Planning must therefore describe stable contracts at each gateway while leaving room for iteration as volumes and SLA expectations shift.
+
+\section{Consumer obligations and guiding principles}
+\label{sec:consumers-principles}
+
+Name primary personas (e.g.,\ analysts, ML engineers), non-functional expectations (recoverability, explainability budgets, reproducibility mandates), toolchain assumptions, escalation paths, operational ownership, audit surfaces, fallback behaviour when ingestion stalls.
+Reference institutional policies only when they materially affect component choice.
+
+\section{Stage coverage: ingestion through monitoring}
+\label{sec:pipeline-stages-global}
+
+Across~\crefrange{sec:stage-ingestion}{sec:stage-monitoring}, answer the mandated \textit{what, why, who, how} prompts for tangible inputs, artefacts, escalation paths, and observability checkpoints.
+
+\section{Data ingestion}
+\label{sec:stage-ingestion}
+
+\subsection{What \& dependencies}
+Enumerate transportation channels, ingestion contracts, buffering strategy, watermarking semantics, completeness checks, lineage capture, partitioning policies, archival destinations.
+
+\subsection{Why it matters \& consumer impact}
+Tie ingestion robustness directly to SLA fulfilment downstream for both analytics and modelling.
+
+\subsection{Responsible roles}
+Attribute accountability between platform, data stewardship, sourcing teams, governance.
+
+\subsection{How execution unfolds}
+Lay out choreography from discovery to hardened jobs, IaC artefacts, alerting surfaces, rerun semantics.
+
+\section{Data pre-processing}
+\label{sec:stage-preprocessing}
+
+\subsection{Structural harmonisation \& quality assurance}
+Discuss schema onboarding, categorical handling, anomaly detection, surrogate keys for slowly changing semantics, deterministic versus learned features, documentation duties.
+
+\subsection{Human and automated actors}
+Separate responsibilities for domain experts versus pipeline automation for approval gates.
+
+\subsection{Outputs feeding consumers}
+Declare canonical layers (e.g.,\ Bronze/Silver semantic zones) if layering helps clarity.
+
+\section{Model development}
+\label{sec:stage-model-dev}
+
+Discuss experiment tracking, reproducible environments, unbiased validation design, Responsible AI checkpoints, artefacts promoted toward deployment readiness.
+
+\section{Model deployment}
+\label{sec:stage-deployment}
+
+Address packaging, rollout strategies, rollback levers, performance contracts, integrations with ingestion feedback loops where scorecards inform monitoring thresholds.
+
+\section{Model monitoring}
+\label{sec:stage-monitoring}
+
+Detail drift watchers, alerting, human-in-loop review queues, mandated retraining schedules, interplay with lineage metadata.
+
+\section{Iterative refinement narrative}
+\label{sec:iteration-pipeline}
+
+Use this section explicitly to recount how drafts evolved (what hypotheses failed, telemetry that forced redesigns, compromises accepted after stakeholder pushback).
+
+\begin{table}[htbp]
+  \centering
+  \caption{Pipeline stage accountability matrix.}
+  \label{tab:pipeline-raci-lite}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.1}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.34\linewidth} >{\centering\arraybackslash}p{0.09\linewidth}>{\centering\arraybackslash}p{0.09\linewidth}>{\centering\arraybackslash}p{0.09\linewidth}>{\centering\arraybackslash}p{0.09\linewidth}@{}}
+    \toprule
+    Pipeline stage & R & A & C & I\\
+    \midrule
+    Data ingestion              & Populate & Populate & Populate & Populate\\
+    Data pre-processing       & Populate & Populate & Populate & Populate\\
+    Model development         & Populate & Populate & Populate & Populate\\
+    Model deployment          & Populate & Populate & Populate & Populate\\
+    Model monitoring          & Populate & Populate & Populate & Populate\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{Legend:}
+\textit{R}esponsible performs the hands-on work,
+\textit{A}ccountable approves outcomes,
+\textit{C}onsulted offers domain expertise,
+\textit{I}nformed stays aware of timelines.

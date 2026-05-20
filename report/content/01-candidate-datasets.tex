@@ -1,0 +1,81 @@
+\chapter{Candidate source datasets (Exercise 1, Step 1)}
+\label{ch:candidate-datasets}
+
+This chapter records three plausible primary sources for supervised learning alongside the structured discussion required before any pipeline blueprint is credible.
+Consistency across candidates makes comparative reading easier once the favoured dataset is defended in~\cref{sec:chosen-dataset}.
+
+\section{Learning objective framing}
+\label{sec:learning-objective}
+
+State the predictive question, the intended label, approximate unit of analysis (row grain), constraints on latency and governance, how success will be measured, and regulatory or ethical sensitivities upfront.
+Readers should understand why each candidate could support that objective without yet committing to ingestion mechanics.
+
+\section[Dataset one]{Candidate dataset \textnumero\,1}
+\label{sec:dataset-one}
+
+\subsection{Purpose, provenance, and lineage}
+Articulate what the data represents, who generated it and under which programme, sampling frame, freshness guarantees, licences, deduplication rules, known biases, documentation links, and any prior ML usage.
+
+\subsection{Logical and physical portrayal}
+Contrast the logical abstraction (tables, hierarchies, event streams, documents) against on-disk realities (indexes, parquet row groups, API pagination, blobs).
+Readers should envision how exploratory queries behave before transformation.
+
+\subsection{Supervised modelling affordances}
+Clarify target variable derivation, plausible predictors, label noise, leakage risks, imbalance, fairness implications, temporal drift, baseline expectations, and how ground truth was recorded.
+
+\subsection{Illustrative structure diagram}
+\Cref{fig:dataset-one-structure} can be swapped for a production-grade ERD exported from modelling tools whenever available.
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{%
+    \begin{minipage}{0.9\linewidth}
+      \centering
+      \vspace{2cm}
+      \textbf{Structured placeholder for Dataset~1}\\[0.6em]
+      \small Sketch entity relationships, keys, cardinality, identifiers, timestamps, surrogate keys\\
+      Replace with {\ttfamily\textbackslash includegraphics\{figures/your-er-diagram\}} when ready\\\vspace{2cm}
+    \end{minipage}}
+  \caption{Draft depiction of Dataset~1 logical shape before harmonisation.}
+  \label{fig:dataset-one-structure}
+\end{figure}
+
+\section[Dataset two]{Candidate dataset \textnumero\,2}
+\label{sec:dataset-two}
+
+Mirror~\cref{sec:dataset-one} with shorter prose focusing on deltas: sampling differences, orthogonal coverage, interoperability pain points, supplementary labels, tooling gaps.
+
+\section[Dataset three]{Candidate dataset \textnumero\,3}
+\label{sec:dataset-three}
+
+Stress-test diversity: alternatively sourced modalities, freshness trade-offs, cost of ingestion, suitability for ensembles, redundancy with Dataset~1/2.
+
+\section{Chosen dataset and justification}
+\label{sec:chosen-dataset}
+
+Synthesise comparative evidence, quantify trade-offs (e.g.,\ data volume versus label quality versus governance burden), articulate why this dataset aligns with~\cref{sec:learning-objective}, and foresee how augmentation or blending respects the CMP6230 caution regarding incompatible joins beyond simple keys.
+
+\Cref{tab:dataset-matrix} aggregates talking points demanded by markers.
+
+\begin{table}[htbp]
+  \centering
+  \caption{High-level contrasts across shortlisted sources.}
+  \label{tab:dataset-matrix}
+  \footnotesize
+  \setlength{\tabcolsep}{3.5pt}
+  \renewcommand{\arraystretch}{1.12}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.20\linewidth}
+                  >{\raggedright\arraybackslash}p{0.26\linewidth}
+                  >{\raggedright\arraybackslash}p{0.26\linewidth}
+                  >{\raggedright\arraybackslash}p{0.22\linewidth}@{}}
+    \toprule
+    Aspect & Candidate~1 & Candidate~2 & Candidate~3\\
+    \midrule
+    Primary modality & Populate & Populate & Populate\\
+    Sampling frame & Populate & Populate & Populate\\
+    Target clarity & Populate & Populate & Populate\\
+    Access path & Populate & Populate & Populate\\
+    Notable caveat & Populate & Populate & Populate\\
+    \bottomrule
+  \end{tabular}
+\end{table}

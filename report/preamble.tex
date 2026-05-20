@@ -1,0 +1,52 @@
+% Typography and layout
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[british]{babel}
+
+\usepackage[a4paper,margin=25mm]{geometry}
+\usepackage{microtype}
+\usepackage{setspace}
+\onehalfspacing
+
+\usepackage{csquotes}
+\usepackage{amsmath,amssymb}
+
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+
+\usepackage{booktabs,tabularx,longtable}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+
+\usepackage{subcaption}
+
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  breakatwhitespace=true,
+  columns=fullflexible,
+  frame=single,
+  framerule=0.4pt,
+  xleftmargin=0.65em,
+  framexleftmargin=0.55em,
+}
+
+% References (hyperref must precede cleveref)
+\usepackage[hidelinks,unicode]{hyperref}
+\hypersetup{
+  pdfauthor={\StudentName},
+  pdftitle={\ReportTitle},
+}
+\usepackage{cleveref}
+
+\usepackage[
+  backend=biber,
+  style=numeric-comp,
+  sorting=none,
+  maxbibnames=99,
+]{biblatex}
+\addbibresource{references.bib}
+
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}

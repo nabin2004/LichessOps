@@ -1,0 +1,22 @@
+# LaTeX build output (see .latexmkrc)
+build/
+
+# Auxiliary files (also emitted beside sources by some setups)
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.listing
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*-blx.bib
+
+# Compiled PDF at project root (output is normally build/main.pdf)
+/main.pdf
