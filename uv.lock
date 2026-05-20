@@ -7,6 +7,15 @@ resolution-markers = [
     "sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[manifest]
+members = [
+    "lichess",
+    "lichess-data",
+    "lichess-features",
+    "lichess-models",
+    "lichess-serving",
+]
+
 [[package]]
 name = "chess"
 version = "1.11.2"
@@ -164,6 +173,26 @@ requires-dist = [
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "tqdm", specifier = ">=4.67.3" },
 ]
+
+[[package]]
+name = "lichess-data"
+version = "0.1.0"
+source = { editable = "packages/lichess_data" }
+
+[[package]]
+name = "lichess-features"
+version = "0.1.0"
+source = { editable = "packages/lichess_features" }
+
+[[package]]
+name = "lichess-models"
+version = "0.1.0"
+source = { editable = "packages/lichess_models" }
+
+[[package]]
+name = "lichess-serving"
+version = "0.1.0"
+source = { editable = "packages/lichess_serving" }
 
 [[package]]
 name = "matplotlib"
