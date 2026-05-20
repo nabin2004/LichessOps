@@ -1,2 +1,0 @@
-# ML System design
-The process of defining the interface, algorithms, data, infrastructure, and hardware for a machine learning system to satisfy specified requirements such as reliable, scalable, maintainable, adaptable.
