@@ -1,4 +1,6 @@
 *.parquet
 *.zst
 *.pgn
+artifacts/*
+!artifacts/.gitkeep
 logs/

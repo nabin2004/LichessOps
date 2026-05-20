@@ -1,7 +1,15 @@
+from .artifact_manager import get_artifact_path, get_run_dir
 from .config_loader import load_config
 from .logger import get_logger, setup_logging
 
-__all__ = ["LichessException", "get_logger", "load_config", "setup_logging"]
+__all__ = [
+    "LichessException",
+    "get_artifact_path",
+    "get_logger",
+    "get_run_dir",
+    "load_config",
+    "setup_logging",
+]
 
 
 def __getattr__(name: str):
