@@ -12,7 +12,7 @@
 \usepackage{amsmath,amssymb}
 
 \usepackage{graphicx}
-\graphicspath{{figures/}{figures/logos/}}
+\graphicspath{{figures/}{figures/logos/}{figures/appendix/}}
 
 \usepackage{tikz}
 \usetikzlibrary{positioning,shapes.geometric,arrows.meta,calc,fit,backgrounds,
@@ -24,6 +24,7 @@
 \input{tikz/mlops-styles}
 \input{tikz/mlops-logos}
 
+\usepackage{enumitem}
 \usepackage{booktabs,tabularx,longtable}
 \usepackage{caption}
 \captionsetup{font=small,labelfont=bf}
@@ -31,6 +32,12 @@
 \usepackage{subcaption}
 
 \usepackage{listings}
+\lstdefinelanguage{PGN}{
+  sensitive=false,
+  alsoletter={-:},
+  morestring=[b]",
+}
+
 \lstset{
   basicstyle=\ttfamily\footnotesize,
   breaklines=true,
