@@ -1,8 +1,8 @@
 # LichessOps
 
 
-notes/  --> Notes from CS329 for LichessOps  project
-notebook/ --> Experimental notebooks before implementing code
+    notes/  --> Notes from CS329 for LichessOps  project
+    notebook/ --> Experimental notebooks before implementing code
 
 
 dependencies = [
