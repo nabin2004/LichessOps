@@ -13,5 +13,6 @@ watch:
 clean:
 	rm -rf build
 	$(LATEXMK) -c $(MAIN) 2>/dev/null || true
+	rm -f main.aux main.bbl main.bcf main.blg main.fdb_latexmk main.fls main.lof main.log main.lot main.out main.pdf main.run.xml main.synctex.gz main.toc
 
 distclean: clean

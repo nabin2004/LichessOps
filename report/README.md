@@ -220,7 +220,17 @@ general skills)
 
 ## Building the CMP6230 PDF (optional)
 
-Requires a TeX distribution with **latexmk**, **biblatex**, and **biber**.
+Requires a TeX distribution with **latexmk**, **pdfLaTeX**, **biblatex**, and **biber**.
+
+Diagram exports from Draw.io (and similar) are often PDF~1.7 with complex object streams; **pdfLaTeX** can hit a fixed stream buffer when embedding them. The checked-in diagram files under `figures/` are re-encoded to PDF~1.5 with Ghostscript so `make pdf` works reliably. If you replace a diagram and the build fails with `TeX capacity exceeded` / `PDF object stream buffer`, run:
+
+```bash
+cd report
+bash scripts/normalize-figure-pdfs.sh
+make pdf
+```
+
+Alternatively, compile with **LuaLaTeX** (often tolerates the originals): `latexmk -lualatex main.tex`.
 
 ```bash
 cd report

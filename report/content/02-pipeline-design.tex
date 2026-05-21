@@ -18,12 +18,19 @@ Operational ownership distinguishes data sourcing and landing-zone durability fr
 
 \begin{figure}[htbp]
   \centering
+  \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{etl.pdf}
+  \caption{ETL pattern with object storage: data flows from source buckets through extract--transform--load steps orchestrated by Apache Airflow into destination storage.}
+  \label{fig:etl-flow}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
   \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{arch_diag.pdf}
   \caption{End-to-end MLOps pipeline: raw Lichess data lands in MinIO; sequential components (configuration plus prior artefacts $\rightarrow$ processing $\rightarrow$ new artefacts) cover ingestion, validation, transformation, training, and evaluation; a decision gateway permits model push only when evaluation guardrails pass.}
   \label{fig:mlops-pipeline}
 \end{figure}
 
-\Cref{fig:mlops-pipeline} follows a modular, configuration-driven layout common in TFX-, ZenML-, or Kubeflow-style projects.
+\Cref{fig:etl-flow} summarises bucket-to-bucket ETL under Apache Airflow; \cref{fig:mlops-pipeline} follows a modular, configuration-driven layout common in TFX-, ZenML-, or Kubeflow-style projects.
 Solid edges carry data and artefact dependencies; dashed edges mark execution ordering.
 Raw data originates from \textbf{Lichess.org} (API export, bulk release, or other harvest) into \textbf{MinIO}, acting as versioned landing zone prior to deterministic downstream steps.
 
@@ -56,6 +63,13 @@ Across~\crefrange{sec:stage-ingestion}{sec:stage-monitoring} the following secti
 \section{Data ingestion}
 \label{sec:stage-ingestion}
 
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{dataIngestion.pdf}
+  \caption{Data ingestion: the orchestrator applies ingestion config, downloads Lichess monthly data to a raw-data bucket, validates checksums, decompresses with Zstandard, parses games, and writes processed Parquet; invalid payloads trigger alerts.}
+  \label{fig:data-ingestion}
+\end{figure}
+
 \subsection{What \& dependencies}
 Transport pulls from public Lichess releases or API surfaces into MinIO S3-compatible buckets, with partition keys reflecting batch date or export id.
 Contracts cover file formats, hashing for deduplication, buffering between harvest jobs, watermark semantics for incremental loads, and lineage events emitted per successful land.
@@ -72,6 +86,13 @@ Scheduled jobs respect Lichess rate limits, hydrate MinIO, surface partial failu
 \section{Data pre-processing}
 \label{sec:stage-preprocessing}
 
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{dataValidation.pdf}
+  \caption{Data validation under orchestration: train/test splits are checked for schema completeness and drift; Great Expectations stores validation reports; failures route to alerts and updated artefact keys, while validated processed data feeds an offline feature store.}
+  \label{fig:data-validation}
+\end{figure}
+
 \subsection{Structural harmonisation \& quality assurance}
 Stage~B enforces categorical domains, numeric ranges, temporal ordering, and anomaly budgets.
 Stage~C materialises deterministic encoders, documents schema versions and anomaly handling policies, reconciles surrogate keys for slowly changing chess metadata, keeps deterministic features scriptable, and confines learnt embeddings to serialised artefacts.
@@ -85,6 +106,13 @@ Bronze aligns with validated raw-normalised payloads, silver hosts league-ready 
 \section{Model development}
 \label{sec:stage-model-dev}
 
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{modelTrainer.pdf}
+  \caption{Model training: load train/test arrays from validated artefacts, fit the model, compute metrics, register the best run in MLflow, and retain a containerised, reproducible training environment.}
+  \label{fig:model-trainer}
+\end{figure}
+
 Experiment tracking binds git revisions, configs, and artefacts; MLflow (or equivalent) stores metrics per hyperparameter sweep.
 Validation design keeps test data sequestered until final evaluation.
 Responsible AI checkpoints include bias dashboards when sensitive attributes exist, and promotion artefacts bundle weights, optimiser states, and payloads for Stage~E.
@@ -92,12 +120,26 @@ Responsible AI checkpoints include bias dashboards when sensitive attributes exi
 \section{Model deployment}
 \label{sec:stage-deployment}
 
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{deployment.pdf}
+  \caption{Deployment: promote a recent model from MLflow, build a Dockerised FastAPI image, run health checks, and push to the serving host (e.g.\ EC2); improved metrics can trigger CI/CD to refresh the endpoint.}
+  \label{fig:deployment}
+\end{figure}
+
 Packaging emits signed containers, ONNX exports, or TorchScript bundles; rollout supports blue-green or canary patterns; rollback re-pins registry tags.
 Performance contracts define latency envelopes and throughput.
 Model pusher artefacts integrate with ingress and feedback loops that tie score distributions to validation thresholds anchored in preprocessing.
 
 \section{Model monitoring}
 \label{sec:stage-monitoring}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{monitoringObserv.pdf}
+  \caption{Monitoring and observability: API metrics scraped by Prometheus, dashboards and automated reports, rule-based routing to Slack/PagerDuty/email, and controlled reruns from user or scheduled inputs.}
+  \label{fig:monitoring}
+\end{figure}
 
 Production monitors drift in input features, calibration of predicted strengths, and score-prediction error against fresh labelled games.
 Alerting flows through on-call rotations; human review queues escalate fairness or unfair-play detectors; lineage metadata ties retrains to prior artefact identifiers.
