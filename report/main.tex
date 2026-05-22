@@ -7,31 +7,7 @@
 
 % Avoid duplicate Hyperref anchors on Title Page / first body page (pdfLaTeX)
 \hypersetup{pageanchor=false}
-\begin{titlepage}
-  \centering
-
-  {\large \UniName\par}
-
-  \vspace*{3cm}
-
-  {\LARGE\bfseries \ReportTitle\par}
-
-  \vspace{0.75cm}
-
-  {\large \ModuleCode\quad\textemdash\quad\TaskName\par}
-
-  \vfill
-
-  \begin{tabular}{@{}rl@{}}
-    \textit{Student:}           & \StudentName \\[0.35em]
-    \textit{Student ID:}        & \StudentID \\[0.35em]
-    \textit{Programme of study:} & \DegreeName \\
-  \end{tabular}
-
-  \vspace{2.5cm}
-
-  {\large \today\par}
-\end{titlepage}
+\input{content/cover-page}
 \hypersetup{pageanchor=true}
 \cleardoublepage
 
