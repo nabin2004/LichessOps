@@ -5,6 +5,7 @@ LATEXMK := latexmk
 .PHONY: pdf watch clean distclean
 
 pdf:
+	./scripts/gen-body-wordcount.sh
 	$(LATEXMK) -pdf -interaction=nonstopmode $(MAIN)
 
 watch:

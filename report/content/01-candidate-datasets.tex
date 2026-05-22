@@ -1,39 +1,81 @@
-\chapter{Candidate source datasets (Exercise 1, Step 1)}
+\chapter{Candidate source datasets}
 \label{ch:candidate-datasets}
-
-Three supervised sources anchor~\cref{ch:pipeline-planning}; we forecast outcomes~\cref{tab:lichess-ml-features}; choice in~\cref{sec:chosen-dataset}.
-\Cref{fig:step1-candidate-matrix} summarises each candidate against the Step~1 review dimensions.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,keepaspectratio]{step1.pdf}
-  \caption{Candidate dataset comparison across provenance, structure, storage, and supervised-learning affordances (Exercise~1, Step~1).}
+  \caption{Candidate dataset comparison across provenance, structure, storage, and supervised-learning affordances.}
   \label{fig:step1-candidate-matrix}
 \end{figure}
 
-\section{Learning objective framing}
-\label{sec:learning-objective}
-
-One row per game; accuracy plus calibration by time control; CC0 corpus without PHI.
+Competitive platforms and public benchmarks offer contrasting source-data profiles for supervised
+learning. This chapter evaluates three candidates transactional game telemetry, tabular chemistry
+data, and census-derived housing attributes---and selects one for downstream pipeline design.
+\Cref{fig:step1-candidate-matrix} summarises three candidates across provenance, structure, storage, and supervised-learning affordances.
 
 \section[Dataset one]{Candidate dataset \textnumero\,1}
 \label{sec:dataset-one}
 
-\subsection{Purpose, provenance, and lineage}
-\textbf{Lichess} ships monthly rated \texttt{.pgn.zst} archives (\url{https://database.lichess.org/}) with outcomes, clocks, ratings, openings, and SAN movelists~\cite{lichess_open_database}; see~\cref{app:lichess-open-database} for inventory.
+\textbf{Lichess} ships monthly rated \texttt{.pgn.zst} archives (\url{https://database.lichess.org/}) with outcomes, clocks, ratings, openings, and SAN movelists under a \textsc{cc}0 licence~\cite{lichess_open_database}; see~\cref{app:lichess-open-database} for inventory.
+Headers plus ordered moves form the logical model; physically the corpus is compressed text shards, not ready-made tables.
+Supervised targets include game outcome (\texttt{[Result]}) and rating-based signals from pre-game headers (\cref{fig:lichess-pgn-sample}).
 
-\subsection{Logical and physical portrayal}
-Headers plus ordered moves form the logical model (\cref{fig:dataset-one-logical-erd}); physically the corpus is compressed text shards, not ready-made tables.
+\section[Dataset two]{Candidate dataset \textnumero\,2}
+\label{sec:dataset-two}
 
-\begin{figure}[htbp]
+\textbf{Wine Quality}~\cite{Cortez2009wine,UCIWineQuality} is a static CSV of physicochemical assays with ordinal quality scores collected from Portuguese wine samples.
+Flat relational structure and simple ingestion suit tabular baselines, but the corpus is small, stale, and lacks the temporal refresh needed for operational MLOps practice (\cref{fig:uci-wine-schema}).
+
+\section[Dataset three]{Candidate dataset \textnumero\,3}
+\label{sec:dataset-three}
+
+\textbf{Boston housing}~\cite{HarrisonRubinfeld1978,UCIBostonHousing} comprises census and environmental attributes for Boston-area tracts with median home value (\texttt{MEDV}) as a continuous regression target.
+The fixed flat-file schema suits classic tabular baselines rather than transactional chess telemetry and offers limited scale for ingestion, validation, and feature-store design (\cref{fig:boston-housing-sample}).
+
+\section{Chosen dataset and justification}
+\label{sec:chosen-dataset}
+
+We select the Lichess open database for MLOps development due to its sheer volume, scale, embedded labels, \textsc{cc}0 licensing, and monthly refresh.  Lichess dataset clearly outweighes the simpler study purpose datasets like Wine Quality and Boston housing baselines (\cref{sec:dataset-two,sec:dataset-three,fig:step1-candidate-matrix}). Additionally, Lichess Data is produced from a live platform with a large user base, so it has a real-world provenance and operational profile that suits and provides ample direction for learning opportunity in MLOps pipeline design and Data Management. Following are table summarising the operational profile of the Lichess dataset which further supports this selection choice (\cref{tab:lichess-operational-profile,tab:lichess-ml-features}).
+
+
+\begin{table}[htbp]
   \centering
-  \includegraphics[width=0.95\linewidth,height=0.85\textheight,keepaspectratio]{erd}
-  \caption{Candidate~1 (Lichess) logical sketch: conceptual entities versus on-disk compressed PGN shards.}
-  \label{fig:dataset-one-logical-erd}
-\end{figure}
+  \caption{Operational profile of the selected Lichess corpus.}
+  \label{tab:lichess-operational-profile}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.21\linewidth}
+                  >{\raggedright\arraybackslash}p{0.73\linewidth}@{}}
+    \toprule
+    Dimension & Assessment\\
+    \midrule
+    Volume and velocity &
+      Approximately \(7.68\times10^{9}\) rated games in \(\sim\)2.43\,TB of Zstandard-compressed PGN (\cref{app:lichess-open-database}).
+      Non-cumulative monthly dumps add on the order of \(5\times10^{7}\)--\(10^{8}\) games per month.\\
+    Schema complexity &
+      No fixed relational schema
+      Movetext is encoded in SAN, requiring parse or tokenisation pipelines.
+      Field inventories evolve gradually---newer months introduce headers such as \texttt{[Accuracy]} or \texttt{[Termination]} absent from early releases.\\
+    Data quality and sparsity &
+      Mix of elite (\(\geq 2500\) Elo) and casual pairings; optional tags may be absent (\texttt{[Opening]} unset for off-book positions).
+      Outcome priors are tempo-dependent: draws account for \(<2\%\) of bullet (\texttt{1+0}) games but approach \(10\)--\(15\%\) under classical controls.
+      Rating-delta targets are noisy when provisional ratings apply to new accounts.\\
+    Temporal and causal structure &
+      UTC timestamps support chronological splits and back-testing; monthly partitions suit incremental ingestion.
+      Player-level correlation violates independence for rating-change targets---splits should respect time or player identifiers, not naive random shuffling.\\
+    Operational limitation &
+      Bulk exports are post hoc monthly artefacts, not a live stream.
+      Near-real-time inference would require a complementary WebSocket feed in addition to the open-database cadence.\\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\subsection{Supervised modelling affordances}
-Large scale and monthly refresh suit continual learning;~\cref{tab:lichess-ml-features} catalogues headline labels/features.
+\subsection{Supervised modelling}
+\label{sec:supervised-modelling}
+
+The primary supervised task is \emph{pre-game outcome prediction}: given features available before the first move (ratings, time control, variant), estimate whether White wins, Black wins, or the game is drawn, a three-class classification problem with ground truth in \texttt{[Result]} (\texttt{1-0}, \texttt{0-1}, \texttt{1/2-1/2}).
+\Cref{tab:lichess-ml-features} maps labels, baseline predictors, PGN sources, and modelling caveats.
 
 \begin{table}[htbp]
   \centering
@@ -72,7 +114,7 @@ Large scale and monthly refresh suit continual learning;~\cref{tab:lichess-ml-fe
     Feature &
       Termination channel. &
       \texttt{[Termination]} when present (mate, resignation, timeout, etc.). &
-      Helps distinguish abrupt losses from grind-outs; often correlated with outcome so guard against redundant predictors or inflated offline scores.\\
+      Post-game metadata; exclude from pre-game predictors or treat as diagnostic only---often correlated with outcome.\\
     Feature &
       Position-derived telemetry (advanced). &
       Parsed positions (material balance, mobility); optional engine evaluations via offline joins. &
@@ -80,54 +122,3 @@ Large scale and monthly refresh suit continual learning;~\cref{tab:lichess-ml-fe
     \bottomrule
   \end{tabular}
 \end{table}
-
-
-\section[Dataset two]{Candidate dataset \textnumero\,2}
-\label{sec:dataset-two}
-
-\textbf{Wine Quality}~\cite{Cortez2009wine,UCIWineQuality}: static CSV with physicochemical assays and ordinal quality scores---simple ingestion but stale versus monthly Lichess.
-
-\section[Dataset three]{Candidate dataset \textnumero\,3}
-\label{sec:dataset-three}
-
-\textbf{Fashion-MNIST}~\cite{XiaoFashionMNIST}: \(28{\times}28\) grayscale apparel images from GitHub or torch loaders, stressing CV pipelines rather than transactional chess telemetry.
-
-\section{Chosen dataset and justification}
-\label{sec:chosen-dataset}
-
-We select the Lichess open database for MLOps development: scale, embedded labels, \textsc{cc}0 licensing, and monthly refresh outweigh the simpler Wine Quality and Fashion-MNIST baselines (\cref{sec:dataset-two,sec:dataset-three}).
-
-\begin{table}[htbp]
-  \centering
-  \caption{Operational profile of the selected Lichess corpus (Step~1 review dimensions).}
-  \label{tab:lichess-operational-profile}
-  \small
-  \setlength{\tabcolsep}{4pt}
-  \renewcommand{\arraystretch}{1.15}
-  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.21\linewidth}
-                  >{\raggedright\arraybackslash}p{0.73\linewidth}@{}}
-    \toprule
-    Dimension & Assessment\\
-    \midrule
-    Volume and velocity &
-      Approximately \(7.68\times10^{9}\) rated games in \(\sim\)2.43\,TB of Zstandard-compressed PGN (\cref{app:lichess-open-database}).
-      Non-cumulative monthly dumps add on the order of \(5\times10^{7}\)--\(10^{8}\) games per month.\\
-    Schema complexity &
-      No fixed relational schema: tag sets vary by tempo and ruleset (\texttt{[TimeControl]} differs across bullet, blitz, and rapid; \texttt{[Variant]} spans standard chess, Chess960, Crazyhouse, and related modes).
-      Movetext is encoded in SAN, requiring parse or tokenisation pipelines.
-      Field inventories evolve gradually---newer months introduce headers such as \texttt{[Accuracy]} or \texttt{[Termination]} absent from early releases.\\
-    Data quality and sparsity &
-      Mix of elite (\(\geq 2500\) Elo) and casual pairings; optional tags may be absent (\texttt{[Opening]} unset for off-book positions).
-      Outcome priors are tempo-dependent: draws account for \(<2\%\) of bullet (\texttt{1+0}) games but approach \(10\)--\(15\%\) under classical controls.
-      Rating-delta targets are noisy when provisional ratings apply to new accounts.\\
-    Temporal and causal structure &
-      UTC timestamps support chronological splits and back-testing; monthly partitions suit incremental ingestion.
-      Player-level correlation violates independence for rating-change targets---splits should respect time or player identifiers, not naive random shuffling.\\
-    Operational limitation &
-      Bulk exports are post hoc monthly artefacts, not a live stream.
-      Near-real-time inference would require a complementary WebSocket feed in addition to the open-database cadence.\\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-

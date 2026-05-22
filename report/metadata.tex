@@ -13,6 +13,12 @@
 \newcommand{\ReportType}{Log Report}
 \newcommand{\AcademicYear}{Academic Year 2024\,/\,25}
 
+\IfFileExists{build/bodywordcount.tex}{%
+  \input{build/bodywordcount.tex}%
+}{%
+  \providecommand{\BodyWordCount}{0}%
+}
+
 \title{\ReportTitle}
 \author{\StudentName}
 \date{\today}

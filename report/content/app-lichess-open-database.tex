@@ -1,154 +1,59 @@
 \chapter{Lichess Open Database (reference material)}
 \label{app:lichess-open-database}
 
-This appendix records the public specification of the \textbf{Lichess Open Database} as published on \texttt{database.lichess.org}, together with ingestion-oriented notes that matter when treating monthly PGN shards as pipeline inputs.
-The aggregate statistics and inventory table below mirror the project index on \textbf{21 May 2026} (\cref{tab:lichess-monthly-inventory}); later releases will supersede these totals without invalidating the file-level conventions described here.
+Public specification mirroring \textbf{database.lichess.org} (\cite{lichess_open_database}); later releases supersede aggregate counts without changing file conventions noted below.
 
-\section{Licence and redistribution}
+\section{Licence and scope}
 
-Exports are dedicated to the public domain under the Creative Commons \textsc{cc}0~1.0 licence: you may use the data for research, commercial work, publication, or any other purpose, and may download, modify, and redistribute copies without seeking individual permission from the host\footnote{See the licence deed \cite{cc0_10}; catalogue page \cite{lichess_open_database}.}.
+Dedicated to the public domain under Creative Commons \textsc{cc}0~1.0~\cite{cc0_10}.
+\textbf{Standard rated} chess is serialised as \textsc{pgn}; monthly \texttt{.pgn.zst} shards are \emph{non-cumulative}.
+Variants, broadcasts, puzzles, and evaluations are sibling exports on the same catalogue page~\cite{lichess_open_database}.
 
-\section{Branding and catalogue context}
+\section{Corpus summary}
 
-\noindent
-Figure~\ref{fig:lichess-appendix-logo} is reserved for the Lichess wordmark as used in database collateral (drop a vector \textsc{pdf} into the path named in the figure).
-Figure~\ref{fig:lichess-appendix-database-page} is reserved for a cropped screenshot of the standard-rated games index if you wish to show the live download table in context.
-Both figures are optional; the appendix remains complete if you omit the artwork but retain the captions, which carry the scholarly attribution.
+Index snapshot \textbf{21 May 2026}; monthly rows, checksums, and BitTorrent mirrors live on site---not reproduced here~\cite{lichess_open_database}.
 
-\begin{figure}[htbp]
+\begin{table}[htbp]
   \centering
-  \IfFileExists{figures/appendix/lichess-logo.pdf}{%
-    \includegraphics[height=16mm]{lichess-logo.pdf}}{%
-    \fbox{\begin{minipage}[c][0.14\textheight][c]{0.58\linewidth}\centering\small\itshape
-    Place the Lichess wordmark here as \texttt{figures/appendix/lichess-logo.pdf}.\\
-    Use vector artwork from official press or brand assets where possible.
-    \end{minipage}}}
-  \caption{Lichess wordmark (placeholder until artwork is embedded). The public database index presents this mark in its header; embedding the mark signals the data source for readers. Source: \cite{lichess_open_database}.}
-  \label{fig:lichess-appendix-logo}
-\end{figure}
+  \scriptsize
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.05}
+  \caption{Standard-rated Lichess corpus (aggregate; per-month shard list at online index).}%
+  \label{tab:lichess-monthly-inventory}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.38\linewidth} p{0.52\linewidth}@{}}
+    \toprule
+    Field & Value \\
+    \midrule
+    Coverage & \(160\) monthly \texttt{.pgn.zst} files (January~2013--April~2026) \\
+    Aggregate size & \textbf{2.46\,TB} compressed \\
+    Aggregate games & \textbf{\(7{,}772{,}124{,}731\)} \\
+    Live index & \url{https://database.lichess.org/\#standard} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\begin{figure}[htbp]
-  \centering
-  \IfFileExists{figures/appendix/lichess-database-index.png}{%
-    \includegraphics[width=0.92\linewidth]{lichess-database-index.png}}{%
-    \IfFileExists{figures/appendix/lichess-database-index.pdf}{%
-      \includegraphics[width=0.92\linewidth]{lichess-database-index.pdf}}{%
-    \fbox{\begin{minipage}[c][0.22\textheight][c]{0.92\linewidth}\centering\small\itshape
-    Optional: add a cropped screenshot of \texttt{database.lichess.org} (\texttt{figures/appendix/lichess-database-index.png} or \texttt{.pdf}).\\
-    Crop to the standard-rated games panel so Month\,/\,Size\,/\,Games remain legible.
-    \end{minipage}}}}
-  \caption{Optional depiction of the standard-rated-games download index (replace placeholder when a screenshot is available). Demonstrates where monthly \texttt{.pgn.zst} and BitTorrent pointers are maintained. Source: \cite{lichess_open_database}.}
-  \label{fig:lichess-appendix-database-page}
-\end{figure}
+\section[Format]{Illustrative \textsc{pgn}}
 
-\section{Corpus scope (standard rated games)}
+Headers plus White-perspective \texttt{\%eval} and \texttt{\%clk} comments (abridged movetext):
 
-The \emph{standard rated} subset consists of \(7{,}772{,}124{,}731\) games played on \texttt{lichess.org} and serialised as \textsc{pgn}.
-Each monthly file is \emph{non-cumulative}: it contains only the games whose clock time falls in that calendar month.
-Across history the release set spans \textbf{160} monthly files with a combined compressed footprint of approximately \textbf{2.46\,TB}.
-Parallel exports exist for variants, broadcasts, puzzles, and evaluations; this report focuses on standard chess rated games and points readers to the same catalogue page for sibling products \cite{lichess_open_database}.
-
-\section{Monthly export inventory}
-
-\noindent
-Monthly files ship as Zstandard-compressed PGN (\texttt{.pgn.zst}); the project page also mirrors BitTorrent payloads for bulk retrieval.
-Plain-text download manifests and \textsc{sha}256 checksums are published alongside the artefacts (retrieve from the index rather than copying digests into this PDF).
-
-{\footnotesize
-\begin{longtable}{@{}l r r@{}}
-  \caption{Monthly standard-rated Lichess corpora (compressed containers).}%
-  \label{tab:lichess-monthly-inventory}\\
-  \toprule
-  Month & Size & Games \\
-  \midrule
-  \endfirsthead
-  \caption[]{\textit{(continued)} Monthly standard-rated Lichess corpora.}\\
-  \toprule
-  Month & Size & Games \\
-  \midrule
-  \endhead
-  \midrule
-  \multicolumn{3}{r}{\textit{Continued on next page}}\\
-  \endfoot
-  \input{content/lichess-monthly-inventory.tex}
-\end{longtable}
-}
-
-\section[Format example]{Illustrative record (\textsc{pgn})}
-
-The following excerpt (abridged only where noted) illustrates typical header tags, embedded Stockfish evaluation comments from White's point of view, and clock annotations.
-
-\begin{lstlisting}[language=PGN,label={lst:lichess-pgn-sample}, basicstyle=\ttfamily\scriptsize, columns=fullflexible, keepspaces=true, aboveskip=0.75em, belowskip=0.75em]
-[Event "Rated Bullet tournament https://lichess.org/tournament/yc1WW2Ox"]
-[Site "https://lichess.org/PpwPOZMq"]
-[Date "2017.04.01"]
-[Round "-"]
-[White "Abbot"]
-[Black "Costello"]
-[Result "0-1"]
-[UTCDate "2017.04.01"]
-[UTCTime "11:32:01"]
-[WhiteElo "2100"]
-[BlackElo "2000"]
-[WhiteRatingDiff "-4"]
-[BlackRatingDiff "+1"]
-[WhiteTitle "FM"]
-[ECO "B30"]
-[Opening "Sicilian Defense: Old Sicilian"]
-[TimeControl "300+0"]
-[Termination "Time forfeit"]
-
+\begin{lstlisting}[language=PGN,label={lst:lichess-pgn-sample}, basicstyle=\ttfamily\scriptsize, columns=fullflexible, keepspaces=true, frame=single, framerule=0.3pt, xleftmargin=0.45em, aboveskip=0.35em, belowskip=0.35em]
+[White "Abbot"][Black "Costello"][Result "0-1"][UTCDate "2017.04.01"][UTCTime "11:32:01"]
+[WhiteElo "2100"][BlackElo "2000"][TimeControl "300+0"][Termination "Time forfeit"]
 1. e4 { [%eval 0.17] [%clk 0:00:30] } 1... c5 { [%eval 0.19] [%clk 0:00:30] }
-2. Nf3 { [%eval 0.25] [%clk 0:00:29] } 2... Nc6 { [%eval 0.33] [%clk 0:00:30] }
-3. Bc4 { [%eval -0.13] [%clk 0:00:28] } 3... e6 { [%eval -0.04] [%clk 0:00:30] }
-4. c3 { [%eval -0.4] [%clk 0:00:27] } 4... b5? { [%eval 1.18] [%clk 0:00:30] }
-5. Bb3?! { [%eval 0.21] [%clk 0:00:26] } 5... c4 { [%eval 0.32] [%clk 0:00:29] }
-6. Bc2 { [%eval 0.2] [%clk 0:00:25] } 6... a5 { [%eval 0.6] [%clk 0:00:29] }
-7. d4 { [%eval 0.29] [%clk 0:00:23] } 7... cxd3 { [%eval 0.6] [%clk 0:00:27] }
-8. Qxd3 { [%eval 0.12] [%clk 0:00:22] } 8... Nf6 { [%eval 0.52] [%clk 0:00:26] }
-9. e5 { [%eval 0.39] [%clk 0:00:21] } 9... Nd5 { [%eval 0.45] [%clk 0:00:25] }
-10. Bg5?! { [%eval -0.44] [%clk 0:00:18] } 10... Qc7 { [%eval -0.12] [%clk 0:00:23] }
-11. Nbd2?? { [%eval -3.15] [%clk 0:00:14] } 11... h6 { [%eval -2.99] [%clk 0:00:23] }
-12. Bh4 { [%eval -3.0] [%clk 0:00:11] } 12... Ba6? { [%eval -0.12] [%clk 0:00:23] }
-13. b3?? { [%eval -4.14] [%clk 0:00:02] } 13... Nf4? { [%eval -2.73] [%clk 0:00:21] } 0-1
+2. Nf3 { [%eval 0.25] [%clk 0:00:29] } 2... Nc6 { [%eval 0.33] [%clk 0:00:30] } ...
 \end{lstlisting}
 
-\section{Technical notes for preprocessing}
+\section{Ingestion notes and caveats}
 
-\begin{itemize}[leftmargin=2em]
-  \item Roughly 6\% of games embed Stockfish analysis markers such as \texttt{[\%eval 2.35]} (centipawn advantage) or mate-distance hashes like \texttt{\#-4}; evaluations read from White's perspective.
-  \item \texttt{WhiteElo} and \texttt{BlackElo} encode Glicko-2 ratings as published by Lichess.
-  \item Clock telemetry appears as \texttt{\%clk} comments to the second from April~2017 onward; a historical export (\texttt{\%clkc}) exists for centisecond precision on older coverage.
-  \item Accounts driven through the Bot \textsc{api} expose \texttt{[WhiteTitle "BOT"]} or \texttt{[BlackTitle "BOT"]}.
-  \item Non-standard rule sets include a \texttt{Variant} tag (for example \texttt{Antichess}).
-  \item \textbf{Zstandard:} Unix users may run \texttt{pzstd -d file.pgn.zst}; Windows users commonly rely on PeaZip or equivalent. Uncompressed text is roughly \(7.1\times\) larger than the \texttt{.zst}.
-  \item Partial downloads support partial decompression; pipe decompression streams directly into analytical scripts (\texttt{zstdcat} into Python, for example) to avoid writing fully expanded copies to disk.
-  \item Interactive database tools (\textsc{scid}, ChessBase) often struggle with single multi-terabyte \textsc{pgn} files; split files or programmatic parsers (python-chess, Scoutfish) are the practical route.
+{\scriptsize
+\begin{itemize}[leftmargin=1em]
+  \item \(\sim\)6\% of games embed Stockfish analysis (\texttt{\%eval} centipawn lines, mate-distance markers); \texttt{WhiteElo}/\texttt{BlackElo} are Glicko-2; \texttt{\%clk} from April~2017 (\texttt{\%clkc} centiseconds on older shards); Bot \textsc{api} games may carry \texttt{[WhiteTitle "BOT"]}/\texttt{[BlackTitle "BOT"]}; \texttt{Variant} tags mark non-standard rules.
+  \item Decompress with \texttt{zstd}/\texttt{pzstd}; uncompressed text \(\sim\)7.1\(\times\) \texttt{.zst}; streaming (\texttt{zstdcat} \(\to\) parsers) avoids full-disk expansion; very large files suit programmatic parsers (\texttt{python-chess}, Scoutfish) over desktop database tools alone.
 \end{itemize}
 
-\section{Documented data-quality caveats}
-
-These items summarise known regressions and anomalies published alongside the database; treat them as schema- and era-dependent limitations when training or auditing models.
-
-\begin{description}[style=nextline,font=\normalfont\bfseries,leftmargin=0.7cm]
-  \item[November 2023] Some Chess960 rematches record invalid castling rights in the starting \textsc{fen}.
-  \item[December 2022] Some Antichess rows carry bullet ratings in error.
-  \item[12 March 2021] Result tags may be wrong for a subset affected by a database outage after a datacentre incident.
-  \item[9 February 2021] Resignations can appear after the recorded terminal position; variant games may list moves past the decisive moment.
-  \item[December 2020 / January 2021] Many variant games were analysed with standard \textsc{nnue} settings, yielding incorrect evaluations.
-  \item[Up to December 2020] Some exports omit redundant yet normative headers (for example \texttt{Round}), omit \texttt{Date} (use \texttt{UTCDate}/\texttt{UTCTime}), or drop black move numbers after comments---later re-exports may repair this.
-  \item[July--August 2020] Large swathes (notably 31~July) show unreliable opening evaluations for variants (up to fifteen plies).
-  \item[December 2016 (peak 9th)] Widespread evaluation corruption.
-  \item[Before 2016] Mate-distance comments do not always correspond to true mates.
-  \item[June 2020; before March 2016] Rated self-play was possible in isolated cases.
-  \item[Up to August 2016] Seven games contain illegal castling moves in the move list.
-\end{description}
-
-\section{Community derivatives}
-
-Lichess maintains a curated, evolving list of research projects and derivative tools built atop these releases.
-Rather than reproducing brittle URLs here, consult the live catalogue on \texttt{database.lichess.org}, which stays current as new work appears\cite{lichess_open_database}.
-
-\section*{Feedback}
-
-The maintainers invite researchers to share derived results via \href{mailto:contact@lichess.org}{\texttt{contact@lichess.org}} (\cite{lichess_open_database}).
+\noindent\textbf{Published quality regressions }(era-dependent; summarise when modelling):
+\begin{itemize}[leftmargin=1em]
+  \item \textbf{2023--}: Chess960 rematches sometimes invalid castling \textsc{fen}; Antichess rating mix-ups (Dec~2022).
+  \item \textbf{2020--2021}: Mar~2021 result-tag errors (outage); Feb~2021 resignations/move lists past terminal variants; variant \textsc{nnue} mis-settings (Dec~2020--Jan~2021); Jul--Aug~2020 poor variant opening evals (\(\approx\)July peak); sporadic rated self-play (Jun~2020; pre-Mar~2016).
+  \item \textbf{\(\leq\)Dec~2020}: Sparse headers (\texttt{Round}, \texttt{Date}); Dec~2016 eval corruption peak; mates before 2016 not guaranteed true; \(\leq\)Aug~2016 seven illegal castle games.
+\end{itemize}}

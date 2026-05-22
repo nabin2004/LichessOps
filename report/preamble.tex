@@ -1,4 +1,9 @@
 % Typography and layout
+% Embedded figure batches may exhaust pdfTeX PDF object-stream buffer on rebuilds.
+\usepackage{iftex}
+\ifPDFTeX
+  \pdfobjcompresslevel=0
+\fi
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[british]{babel}
@@ -12,7 +17,7 @@
 \usepackage{amsmath,amssymb}
 
 \usepackage{graphicx}
-\graphicspath{{figures/}{figures/logos/}{figures/appendix/}}
+\graphicspath{{figures/}{figures/candidate/}{figures/logos/}{figures/appendix/}}
 
 \usepackage{tikz}
 \usetikzlibrary{positioning,shapes.geometric,arrows.meta,calc,fit,backgrounds,

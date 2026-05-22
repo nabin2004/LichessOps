@@ -5,6 +5,10 @@
 
 \begin{document}
 
+%TC:ignore
+% Word count (scripts/gen-body-wordcount.sh) excludes everything until %TC:endignore
+% below: title page, abstract, TOC, and lists of figures/tables.
+
 % Avoid duplicate Hyperref anchors on Title Page / first body page (pdfLaTeX)
 \hypersetup{pageanchor=false}
 \input{content/cover-page}
@@ -24,22 +28,31 @@ This log report outlines the planning and design of a data management and analyt
 \listoffigures
 \listoftables
 \clearpage
+%TC:endignore
 
 \input{content/01-candidate-datasets}
 \input{content/02-pipeline-design}
 \input{content/03-storage-plan}
 \input{content/04-reflection}
 
+%TC:ignore
+% Word count excludes appendix and bibliography (from here to %TC:endignore).
+
 \appendix
 
+\begingroup
+\singlespacing
+\small
+\setlength{\parskip}{0.25ex plus 0.1ex}
+\setlist{nosep,leftmargin=*}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{-0.75ex \@plus -0.2ex}{0.4ex}{\normalfont\bfseries\small}}
+\makeatother
+\input{content/app-candidate-datasets}
 \input{content/app-lichess-open-database}
-
-\chapter{Supplementary material}
-\label{app:supplementary}
-
-Additional oversized diagrams or repeat tables from the body may be placed here if markers request them; the primary reference tables for the Lichess Open Database appear in \cref{app:lichess-open-database}.
-Keeping the narrative readable in the main chapters while parking detailed artefacts in appendices is conventional for coursework and technical reports alike.
+\endgroup
 
 \printbibliography[heading=bibintoc]
+%TC:endignore
 
 \end{document}

@@ -1,41 +1,26 @@
 \chapter{Pipeline planning and design}
 \label{ch:pipeline-planning}
 
-Analysts need notebooks and ad hoc SQL; ML engineers need scheduled training with promotion gates.
-We separate stable contracts (configs, artefacts, lineage) from replaceable infrastructure (orchestrator, object store, registry).
+This section presents the planned data analytics pipeline for ingesting, processing, and
+serving the Lichess dataset to two classes of consumer: (1) Analysts performing ad hoc
+queries and generating reports via SQL/notebooks and (2) An
+automated machine learning pipeline for supervised model training and serving.
 
-\section{Consumer obligations and guiding principles}
-\label{sec:consumers-principles}
-
-Non-functionals: recover partial runs, audit lineage, alert on ingestion or deploy failure.
-Stack shape: Airflow-class DAGs, S3-compatible storage, MLflow-style experiment tracking.
-
-\section{Stage coverage: ingestion through monitoring}
-\label{sec:pipeline-stages-global}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{elt.pdf}
-  \caption{ELT pattern with object storage.}
-  \label{fig:etl-flow}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{arch_diag.pdf}
-  \caption{End-to-end MLOps pipeline: raw Lichess data lands in MinIO; sequential components (configuration plus prior artefacts $\rightarrow$ processing $\rightarrow$ new artefacts) cover ingestion, validation, transformation, training, and evaluation; a decision gateway permits model push only when evaluation guardrails pass.}
-  \label{fig:mlops-pipeline}
-\end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,keepaspectratio]{whowhatandhow.pdf}
-  \caption{Pipeline stages: what (inputs and outputs), why (rationale), who (accountability), and how (internal steps and tools) for ingestion through monitoring (Exercise~1, Step~2).}
+  \caption{Pipeline stages: What, Why, Who, and How for each stage of the MLOps workflow.}
   \label{fig:pipeline-whowhatandhow}
 \end{figure}
 
-\Cref{fig:etl-flow} shows Airflow bucket ETL; \cref{fig:mlops-pipeline} shows immutable artefact stages through validation, training, evaluation, and conditional push; \cref{fig:pipeline-whowhatandhow} tabulates what, why, who, and how for each mandated stage.
-The sections below elaborate each stage with dedicated diagrams.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{arch_diag.pdf}
+  \caption{End-to-end MLOps pipeline divided in terms of configuration, artefacts, and components.}
+  \label{fig:mlops-pipeline}
+\end{figure}
 
 \section{Data ingestion}
 \label{sec:stage-ingestion}
@@ -47,23 +32,21 @@ The sections below elaborate each stage with dedicated diagrams.
   \label{fig:data-ingestion}
 \end{figure}
 
-Ingestion lands bulk \texttt{.pgn.zst} in MinIO with monthly partitions, checksum contracts, and idempotent keys (\cref{fig:data-ingestion}).
-Data engineering owns connectors; governance checks licensing.
-Stable landing prevents gaps and duplicates that would break dashboards and labels.
+This pipeline automates the ingestion of Lichess's monthly public game data. An Apache Airflow orchestrator triggers the download, which then validates downloaded data's integrity, decompresses, parses, and finally stores the data in a DuckDBcolumnar database for downstream users (Data Scientists, Business Analytics, Data Engineers). We use the MinIO object store as the alternative to S3 for storing the raw and processed data. The raw data is stored as a single immutable object, while the processed data is stored in a structured format (Parquet) for efficient querying and analysis.
 
 \section{Data pre-processing}
 \label{sec:stage-preprocessing}
 
+After Spark writes the star‑schema Parquet files to MinIO, they are loaded into DuckDB – the columnar offline store. DuckDB holds the \texttt{fact\_games} and dimension tables, enabling fast SQL for both validation and feature generation. A Great Expectations checkpoint runs on the entire DuckDB table (or the underlying Parquet) before any split. It checks column presence, data types, null ratios, and allowed value ranges. If validation fails, the pipeline halts and sends an alert; if it passes, an artefact is produced certifying data quality. Feast (with DuckDB as its offline store) executes point‑in‑time feature retrieval on the full historical dataset. Time‑dependent features (e.g., player win‑rate over the last 30 days) are computed using only information available before each game’s timestamp, preventing temporal leakage. The resulting feature DataFrame – now containing all features and the target – is split chronologically (e.g., 80 \% train, 20 \% test). Because features were built on the whole dataset before splitting, both partitions contain every column; the “columns missing in training/test” problem is avoided entirely.  
+
+
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{dataValidation.pdf}
-  \caption{Data validation under orchestration: train/test splits are checked for schema completeness and drift; Great Expectations stores validation reports; failures route to alerts and updated artefact keys, while validated processed data feeds an offline feature store.}
+  \caption{Data preprocessing under orchestration: train/test splits are checked for schema completeness and drift; Great Expectations stores validation reports; failures route to alerts and updated artefact keys, while validated processed data feeds an offline feature store.}
   \label{fig:data-validation}
 \end{figure}
 
-Validation enforces schema and drift budgets; transformation encodes features, splits without leakage, and serialises preprocessors beside tensors (\cref{fig:data-validation}).
-SMEs tune rules; automation blocks downstream on threshold breaches.
-Analysts consume silver tables; training reuses the same transforms at inference.
 
 \section{Model development}
 \label{sec:stage-model-dev}
@@ -104,33 +87,3 @@ Canary and rollback retag registries; contracts keep serving aligned with prepro
 Production tracks feature drift, latency SLOs, and score error as new months arrive (\cref{fig:monitoring}).
 MLOps triages alerts; retrains stay lineage-linked to ingestion batches.
 
-\section{Iterative refinement narrative}
-\label{sec:iteration-pipeline}
-
-We replaced an early sketch with~\cref{fig:mlops-pipeline} for validation loops and RACI~\cref{tab:pipeline-raci-lite}.
-
-\begin{table}[htbp]
-  \centering
-  \caption{Pipeline stage accountability matrix (illustrative).}
-  \label{tab:pipeline-raci-lite}
-  \footnotesize
-  \setlength{\tabcolsep}{4pt}
-  \renewcommand{\arraystretch}{1.1}
-  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.31\linewidth} >{\centering\arraybackslash}p{0.115\linewidth}>{\centering\arraybackslash}p{0.115\linewidth}>{\centering\arraybackslash}p{0.115\linewidth}>{\centering\arraybackslash}p{0.115\linewidth}@{}}
-    \toprule
-    Pipeline stage & R & A & C & I\\
-    \midrule
-    Data ingestion             & DE & Head of data & Stewardship & Analysts\\
-    Data pre-processing        & DE / MLE & MLOps lead & Domain SMEs & Governance\\
-    Model development          & MLE & Research lead & SMEs & Analysts\\
-    Model deployment           & MLOps & Prod owner & SecOps & Analysts\\
-    Model monitoring           & MLOps & Prod owner & MLE \& DE & Stewardship\\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\textbf{Legend:}
-\textit{R}esponsible performs the hands-on work,
-\textit{A}ccountable approves outcomes,
-\textit{C}onsulted offers domain expertise,
-\textit{I}nformed stays aware of timelines.

@@ -50,20 +50,13 @@ After the raw file, it is transformed into a set of parquet tables arraanged in 
 It keeps compute and storage separate, allows direct S3-compatible reads from Spark, DuckDB, and Feast, and the raw bucket gives a permanent, immutable copy for reprocessing.
 
 \subsection{Logical structure (Star Schema)}
-The processed data is modelled as a star schema centred on \texttt{fact\_games}. The design is shown in \cref{fig:storage-star-erd} as a crow-foot ERD.
+The processed data is modelled as a star schema centred on \texttt{fact\_games}. The design is shown in \cref{fig:dataset-one-logical-erd} as a crow-foot ERD.
 
 \begin{figure}[htbp]
   \centering
-  \IfFileExists{figures/star-schema-erd.pdf}{%
-    \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{star-schema-erd.pdf}}{%
-    \fbox{\begin{minipage}{0.92\linewidth}
-    \centering\vspace{2em}
-    Place the star-schema ERD here as \texttt{figures/star-schema-erd.pdf}.\\
-    \small\textit{Crow's-foot diagram: \texttt{fact\_games}, \texttt{dim\_player}, \texttt{dim\_opening}, \texttt{dim\_date}, optional \texttt{fact\_moves}.}%
-    \vspace{2em}
-    \end{minipage}}}
-  \caption{Star schema ERD for processed Lichess games: fact table at the centre with player, opening, and date dimensions (and optional move-level fact).}
-  \label{fig:storage-star-erd}
+  \includegraphics[width=0.95\linewidth,height=0.85\textheight,keepaspectratio]{erd}
+  \caption{Star schema for processed Lichess data: a central fact table of games with dimensions for players, openings, and dates.}
+  \label{fig:dataset-one-logical-erd}
 \end{figure}
 
 
@@ -119,6 +112,15 @@ Schema evolution (e.g., adding a new dimension) requires careful handling, but P
 
 \section{Extraction, Loading, and Transformation (ELT)}
 I follow an ELT pattern, not ETL, because the heavy transformation happens after the data lands in the object store MinIO.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{elt.pdf}
+  \caption{ELT pattern with object storage.}
+  \label{fig:etl-flow}
+\end{figure}
+
+
 
 \subsection{Extract}
 An Airflow DAG (or a cron job) downloads the .pgn.zst from Lichess, checks the SHA256 sum, and uploads it unchanged to s3://lichess-raw/pgn/....
