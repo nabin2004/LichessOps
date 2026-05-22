@@ -1,25 +1,22 @@
-\chapter{Pipeline planning and design (Exercise 1, Step 2)}
+\chapter{Pipeline planning and design}
 \label{ch:pipeline-planning}
 
-Workloads split between interactive analytics (notebooks, exploratory SQL, BI artefacts) and an automated supervised-learning pipeline.
-Planning therefore separates stable interfaces (configs, artefacts, lineage) from components that may change as data volume and SLA expectations evolve.
+Analysts need notebooks and ad hoc SQL; ML engineers need scheduled training with promotion gates.
+We separate stable contracts (configs, artefacts, lineage) from replaceable infrastructure (orchestrator, object store, registry).
 
 \section{Consumer obligations and guiding principles}
 \label{sec:consumers-principles}
 
-Primary consumers are analysts (ad hoc exploration on curated datasets) and ML engineers (scheduled training and promotion).
-Non-functional targets include recoverability after partial runs, reproducible executions from recorded configs and artefact snapshots, auditability via lineage metadata, and clear escalation when ingestion blocks or deployments fail.
-
-Toolchain assumptions mirror production-oriented stacks: orchestration akin to Kubeflow, ZenML, or TFX DAGs; object storage compatible with cloud-native ML workflows; and experiment registries where appropriate.
-Operational ownership distinguishes data sourcing and landing-zone durability from modelling and deployment approvals.
+Non-functionals: recover partial runs, audit lineage, alert on ingestion or deploy failure.
+Stack shape: Airflow-class DAGs, S3-compatible storage, MLflow-style experiment tracking.
 
 \section{Stage coverage: ingestion through monitoring}
 \label{sec:pipeline-stages-global}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{etl.pdf}
-  \caption{ETL pattern with object storage: data flows from source buckets through extract--transform--load steps orchestrated by Apache Airflow into destination storage.}
+  \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{elt.pdf}
+  \caption{ELT pattern with object storage.}
   \label{fig:etl-flow}
 \end{figure}
 
@@ -30,35 +27,15 @@ Operational ownership distinguishes data sourcing and landing-zone durability fr
   \label{fig:mlops-pipeline}
 \end{figure}
 
-\Cref{fig:etl-flow} summarises bucket-to-bucket ETL under Apache Airflow; \cref{fig:mlops-pipeline} follows a modular, configuration-driven layout common in TFX-, ZenML-, or Kubeflow-style projects.
-Solid edges carry data and artefact dependencies; dashed edges mark execution ordering.
-Raw data originates from \textbf{Lichess.org} (API export, bulk release, or other harvest) into \textbf{MinIO}, acting as versioned landing zone prior to deterministic downstream steps.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{whowhatandhow.pdf}
+  \caption{Pipeline stages: what (inputs and outputs), why (rationale), who (accountability), and how (internal steps and tools) for ingestion through monitoring (Exercise~1, Step~2).}
+  \label{fig:pipeline-whowhatandhow}
+\end{figure}
 
-\textbf{Stage~A --- data ingestion.}
-Inputs combine objects from MinIO with a \textit{data ingestion config} (endpoints, batch windows, partitioning).
-Processing extracts structured slices (e.g.\ games, ratings metadata) into \textbf{data ingestion artefacts} (CSV/Parquet/TFRecord files under versioned prefixes).
-
-\textbf{Stage~B --- data validation.}
-The validator applies schema constraints, completeness thresholds and drift cues from \textit{data validation config}.
-It emits \textbf{validation artefacts} (reports, anomaly logs); a feedback path supports retries or remediation before transformation consumes data.
-
-\textbf{Stage~C --- data transformation.}
-Feature rules from \textit{data transformation config} drive harmonisation, encoding, and scaling; the stage splits train / validation / test without leakage and exports \textbf{transformation artefacts} (tensor batches, fitted preprocessors serialised beside data).
-
-\textbf{Stage~D --- model trainer.}
-The trainer reads transformation bundles and hyperparameters from \textit{model trainer config}, runs the optimisation loop, and produces \textbf{trainer artefacts}: weight checkpoints, architecture descriptors, and scalar training logs.
-
-\textbf{Stage~E --- model evaluation.}
-Held-out splits and thresholds in \textit{model evaluation config} drive scoring; outputs may compare against production baselines and materialise \textbf{evaluation artefacts}: metric JSON, ROC summaries, and confusion-matrix exports.
-
-\textbf{Conditional deployment.}
-A \emph{model accepted?} gateway inspects evaluation artefacts and passes control only when every guardrail clears.
-The \textbf{model pusher} consumes \textit{model pusher config} (registry URL, container image tagging, K8s namespace, or artefact buckets) and publishes \textbf{model pusher artefacts}: production bundles plus dependency manifests and inference schema contracts.
-
-\textbf{Cross-cutting patterns.}
-Configs stay decoupled from implementations; each stage writes immutable artefacts with metadata so failed runs expose exact intermediates, reproducible reruns traverse the same graph, and lineage tooling can relate predictions back to ingestion inputs.
-
-Across~\crefrange{sec:stage-ingestion}{sec:stage-monitoring} the following sections instantiate this diagram for ingestion through monitoring using the mandated \textit{what why who how} structure.
+\Cref{fig:etl-flow} shows Airflow bucket ETL; \cref{fig:mlops-pipeline} shows immutable artefact stages through validation, training, evaluation, and conditional push; \cref{fig:pipeline-whowhatandhow} tabulates what, why, who, and how for each mandated stage.
+The sections below elaborate each stage with dedicated diagrams.
 
 \section{Data ingestion}
 \label{sec:stage-ingestion}
@@ -70,18 +47,9 @@ Across~\crefrange{sec:stage-ingestion}{sec:stage-monitoring} the following secti
   \label{fig:data-ingestion}
 \end{figure}
 
-\subsection{What \& dependencies}
-Transport pulls from public Lichess releases or API surfaces into MinIO S3-compatible buckets, with partition keys reflecting batch date or export id.
-Contracts cover file formats, hashing for deduplication, buffering between harvest jobs, watermark semantics for incremental loads, and lineage events emitted per successful land.
-
-\subsection{Why it matters \& consumer impact}
-Ingestion is the SLA root: gaps or duplication corrupt analytics dashboards and raise poisoning risk in labelled training shards, while stable prefixes let consumers pin reproducible snapshots.
-
-\subsection{Responsible roles}
-Data engineering owns connectors and landing durability; the ML platform curates ingestion templates; governance reviews external data licence alignment.
-
-\subsection{How execution unfolds}
-Scheduled jobs respect Lichess rate limits, hydrate MinIO, surface partial failures via alerting, declare bucket lifecycle policies as infrastructure-as-code, and rerun with idempotent object keys.
+Ingestion lands bulk \texttt{.pgn.zst} in MinIO with monthly partitions, checksum contracts, and idempotent keys (\cref{fig:data-ingestion}).
+Data engineering owns connectors; governance checks licensing.
+Stable landing prevents gaps and duplicates that would break dashboards and labels.
 
 \section{Data pre-processing}
 \label{sec:stage-preprocessing}
@@ -93,15 +61,9 @@ Scheduled jobs respect Lichess rate limits, hydrate MinIO, surface partial failu
   \label{fig:data-validation}
 \end{figure}
 
-\subsection{Structural harmonisation \& quality assurance}
-Stage~B enforces categorical domains, numeric ranges, temporal ordering, and anomaly budgets.
-Stage~C materialises deterministic encoders, documents schema versions and anomaly handling policies, reconciles surrogate keys for slowly changing chess metadata, keeps deterministic features scriptable, and confines learnt embeddings to serialised artefacts.
-
-\subsection{Human and automated actors}
-Domain SMEs consult on adjudicated labels or rule tweaks; automated gates block downstream steps when anomaly density exceeds thresholds and open tickets to stewardship.
-
-\subsection{Outputs feeding consumers}
-Bronze aligns with validated raw-normalised payloads, silver hosts league-ready analytic tables, and modelling tensors sit adjacent to preprocessors so inference applies identical transforms.
+Validation enforces schema and drift budgets; transformation encodes features, splits without leakage, and serialises preprocessors beside tensors (\cref{fig:data-validation}).
+SMEs tune rules; automation blocks downstream on threshold breaches.
+Analysts consume silver tables; training reuses the same transforms at inference.
 
 \section{Model development}
 \label{sec:stage-model-dev}
@@ -113,9 +75,8 @@ Bronze aligns with validated raw-normalised payloads, silver hosts league-ready 
   \label{fig:model-trainer}
 \end{figure}
 
-Experiment tracking binds git revisions, configs, and artefacts; MLflow (or equivalent) stores metrics per hyperparameter sweep.
-Validation design keeps test data sequestered until final evaluation.
-Responsible AI checkpoints include bias dashboards when sensitive attributes exist, and promotion artefacts bundle weights, optimiser states, and payloads for Stage~E.
+Training reads transform bundles and logs git, configs, and metrics in MLflow (\cref{fig:model-trainer}).
+Research approves hypotheses; engineers run sweeps with sequestered test data until final evaluation exports.
 
 \section{Model deployment}
 \label{sec:stage-deployment}
@@ -127,9 +88,8 @@ Responsible AI checkpoints include bias dashboards when sensitive attributes exi
   \label{fig:deployment}
 \end{figure}
 
-Packaging emits signed containers, ONNX exports, or TorchScript bundles; rollout supports blue-green or canary patterns; rollback re-pins registry tags.
-Performance contracts define latency envelopes and throughput.
-Model pusher artefacts integrate with ingress and feedback loops that tie score distributions to validation thresholds anchored in preprocessing.
+Containers promote only after gates; MLOps owns CI/CD with SecOps image review (\cref{fig:deployment}).
+Canary and rollback retag registries; contracts keep serving aligned with preprocessing.
 
 \section{Model monitoring}
 \label{sec:stage-monitoring}
@@ -141,15 +101,13 @@ Model pusher artefacts integrate with ingress and feedback loops that tie score 
   \label{fig:monitoring}
 \end{figure}
 
-Production monitors drift in input features, calibration of predicted strengths, and score-prediction error against fresh labelled games.
-Alerting flows through on-call rotations; human review queues escalate fairness or unfair-play detectors; lineage metadata ties retrains to prior artefact identifiers.
-Scheduled reviews or threshold breaches trigger reruns whose inputs remain traceable to MinIO ingestion boundaries.
+Production tracks feature drift, latency SLOs, and score error as new months arrive (\cref{fig:monitoring}).
+MLOps triages alerts; retrains stay lineage-linked to ingestion batches.
 
 \section{Iterative refinement narrative}
 \label{sec:iteration-pipeline}
 
-Iterations replaced an earlier TikZ sketch with~\cref{fig:mlops-pipeline} to foreground artefact-bound stages, explicit validation feedback, and guarded deployment, tightening alignment with coursework emphasis on reproducibility.
-Stakeholder review highlighted bilingual documentation needs between analysts and ML owners, prompting the clearer RACI delineation below.
+We replaced an early sketch with~\cref{fig:mlops-pipeline} for validation loops and RACI~\cref{tab:pipeline-raci-lite}.
 
 \begin{table}[htbp]
   \centering

@@ -7,3 +7,9 @@
   \caption[Gibb's reflective cycle for iterative MLOps planning.]{\textit{Gibb's reflective cycle} applied to iterative planning for the Lichess MLOps design.}
   \label{fig:reflection-iterations}
 \end{figure}
+
+This planning pass showed how sharply storage choices diverge from pipeline choreography once volume grows:~\cref{fig:mlops-pipeline} sequences Airflow stages, whereas~\cref{ch:storage-planning} had to freeze Parquet partitions and surrogate keys before analysts could safely join~\cref{fig:storage-star-erd}.
+The star-versus-wide-table tension was formative---duplicated player columns tempted me until schema churn on hundreds of millions of rows made normalised dimensions unavoidable.
+Iteratively, laptop CSV pilots collapsed under monthly Lichess drops, forcing the lake ELT story aligned with~\cref{fig:etl-flow} and immutable MinIO prefixes~\cite{lichess_open_database}.
+\Cref{fig:reflection-iterations} reminds me to record each Gibbs stage when diagrams change so future retrains cite exact artefact vintages.
+If I repeated the task, I would co-author Great Expectations suites beside the ingestion DAG definition, checkpoint partition conventions in git with orchestration tweaks, and run prose word-limit checks beside \texttt{latexmk}.

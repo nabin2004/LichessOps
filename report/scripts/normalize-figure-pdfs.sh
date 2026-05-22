@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/figures"
 
 for f in arch_diag.pdf dataIngestion.pdf dataValidation.pdf deployment.pdf \
-         etl.pdf modelTrainer.pdf monitoringObserv.pdf; do
+         elt.pdf modelTrainer.pdf monitoringObserv.pdf; do
   if [[ -f "$f" ]]; then
     echo "Normalizing $f ..."
     tmp="$(mktemp)"

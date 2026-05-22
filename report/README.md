@@ -3,6 +3,25 @@ Student Name: Nabin Oli
 Student ID: 23189629
 Degree: BSc hons Computer and Data Science
 
+```
+File	
+Approx. prose words
+content/01-candidate-datasets.tex
+208 (target ~200)
+content/02-pipeline-design.tex
+324 (target ~330)
+content/03-storage-plan.tex
+325 (target ~320)
+content/04-reflection.tex
+134 (target ~150)
+Total
+991
+
+```
+
+
+
+
 
 
 CMP6230 Coursework Task Sheet 1

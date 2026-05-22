@@ -1,301 +1,143 @@
-\chapter{Keeping the monthly dump usable in analytics (Exercise 1, Step 3)}
+\chapter{Data Storage Plan}
 \label{ch:storage-planning}
+This chapter focuses on the data decisions taken while designing the MLOps pipeline. Further this section also discusses about the physical and logical structure of the dataset showcasing how the current design decisions helps in making the optimal for data analytics and downstream meaching learning tasks too.  
 
-\textit{Opening paragraph (\(\sim\)60--80 words): bridge Chapters~\cref{ch:candidate-datasets}--\cref{ch:pipeline-planning}, restate chosen corpus, clarify this chapter focusses solely on ingestion storage semantics (not rerunning Stage~B--E narrative).}
+% Chapters~\cref{ch:candidate-datasets}--\cref{ch:pipeline-planning} fix corpus plus DAG scope; landing and joins only~\cite{lichess_open_database}.
 
-Chapter~1 described the overall MLOps goal and chose the Lichess monthly PGN archive as the dataset. This chapter is purely about the storage side of Machine learning Operations pipeline including its physical and logical setup.
-
-
-\section{The file we start from}
+\section{Data Source}
 \label{sec:storage-source}
+The data is from Lichess platform which is an open source alternative version of chess.com for playing chess online. Lichess publishes its entire games from database for public use at \url{database.lichess.org}. It is a bulk file which can be downloaded over HTTPS. Each month a single compressed file is published alongside a SHA256 checksum for validation. This project downloads those files, verifies it, and lands it in the object store named MinIO. 
 
-\subsection{Where the dump comes from and how you fetch it}
+\subsection{Physical Storage}
 \label{sec:storage-provenance}
+The raw file downloaded from Lichess which is downloaded and stored in object storage is a compressed PGN file using Zstandard. Zstandard (zstd) was chosen by Lichess because of its balance for compression ration and decompression speed. Once decompressed, the plain-text PGN is roughly five times larger. A typical month goes from ~20 GB to ~100 GB. The raw file remains in the lake as a single immutable object with no transformation is done at this stage.
 
-\textit{Write: HTTPS release index, bulk \texttt{.pgn.zst} download, checksum expectations, contrasts with OLTP APIs.}
-Monthly inventory cues for reproducibility sit in \cref{app:lichess-open-database}~\cite{lichess_open_database}.
+% \texttt{database.lichess.org} publishes monthly \texttt{.pgn.zst} shards plus checksum pairs; verified copies sit in MinIO with inventory in~\cref{app:lichess-open-database}~\cite{lichess_open_database}.
 
-\subsection{What lands on disk (\texttt{.pgn.zst} and PGN text)}
-\label{sec:storage-physical-source}
+\subsection{Logical Storage}
+\label{sec:logical-storage}
+The PGN format is semi-structured file format for storage chess games with metadata. There is no enforeced schema but the structure repeats reliably. Every game is a block of following components:
 
-\textit{Write: container format, decompress to plain text size order-of-magnitude, why Zstandard.}
-\begin{lstlisting}[language=PGN,caption={Structural PGN fragment (paste a representative header block plus one move row).}]
-[Event "..."]
-[Site "https://lichess.org/..."]
-[Date "YYYY.MM.DD"]
-[White "..."]
-[Black "..."]
-[Result "1/2-1/2"]
-1. e4 { [%eval 0.0] [%clk 0:03:00] } 1... c5 { [%eval ...] }
-1/2-1/2
-\end{lstlisting}
+\begin{enumerate}
+    \item A set of headers
+    \item An empty line in between
+    \item The move list in Standard Algebraic Notation. Some games also contains evaluation from stockfish chess engine.
+\end{enumerate}
 
-\subsection{How one game is organised inside the file}
-\label{sec:storage-logical-source}
 
-\textit{Write: semi-structured recurrence of headers \(\rightarrow\) move list; cardinalities.}
-Refine whatever was sketched earlier in \cref{fig:dataset-one-logical-erd} so markers see an explicit structural reading for Step~3.
+
+Logically we can think of the dataset as two nested entities.
+\begin{enumerate}
+ \item \textbf{Game:} Fixed attributes (date, players, result, opening, etc.).
+ \item \textbf{Move:} An ordered list of half-moves, each carrying a move number, SAN notation, UCI coordinates, evaluation, and clock remaining. 
+\end{enumerate}
+
+The cardinality is one game to zero-or-many moves.
+
+\section{Ingested Data Storage}
+\label{ingested_data_storage}
+After the raw file, it is transformed into a set of parquet tables arraanged in a start schema. I'm using an ETL approach. The raw .zst is loaded first, then transformation happens using Apache Spark, and the results are written to the DuckDB which is a columnar database.
+
+
+\subsection{Why Parquet?}
+\begin{itemize}
+    \item Fast aggregations (scans only the columns needed).
+    \item High compression (columns hold similar data).
+    \item Predicate push-down with Spark/DuckDB (partition pruning on year/month).
+\end{itemize}
+
+\subsection{Why MinIO?}
+It keeps compute and storage separate, allows direct S3-compatible reads from Spark, DuckDB, and Feast, and the raw bucket gives a permanent, immutable copy for reprocessing.
+
+\subsection{Logical structure (Star Schema)}
+The processed data is modelled as a star schema centred on \texttt{fact\_games}. The design is shown in \cref{fig:storage-star-erd} as a crow-foot ERD.
 
 \begin{figure}[htbp]
   \centering
-  \fbox{%
-    \begin{minipage}{0.88\linewidth}
-      \centering
-      \vspace{1.4cm}
-      \textbf{PGN logical sketch}\\[0.5em]
-      \small Boxes: Game (header tags)\;\(?\leftrightarrow\) Move (SAN, \(\%\)eval, \(\%\)clock)\\[0.3em]
-      Export final artwork to PDF when ready (optional reference: draws on this placeholder).\\\vspace{1.45cm}
-    \end{minipage}}
-  \caption{Logical view of one PGN game: header fields and ordered move commentary.}
-  \label{fig:storage-pgn-logical}
+  \IfFileExists{figures/star-schema-erd.pdf}{%
+    \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{star-schema-erd.pdf}}{%
+    \fbox{\begin{minipage}{0.92\linewidth}
+    \centering\vspace{2em}
+    Place the star-schema ERD here as \texttt{figures/star-schema-erd.pdf}.\\
+    \small\textit{Crow's-foot diagram: \texttt{fact\_games}, \texttt{dim\_player}, \texttt{dim\_opening}, \texttt{dim\_date}, optional \texttt{fact\_moves}.}%
+    \vspace{2em}
+    \end{minipage}}}
+  \caption{Star schema ERD for processed Lichess games: fact table at the centre with player, opening, and date dimensions (and optional move-level fact).}
+  \label{fig:storage-star-erd}
 \end{figure}
 
-\section{After ingestion: lake layout and star schema}
-\label{sec:storage-ingested}
 
-\subsection{MinIO buckets and Parquet paths}
-\label{sec:storage-physical-lake}
 
-\textit{Write: immutable raw prefixes, processed partitions aligning with monthly drops, compaction cadence if any.}
-Illustrative layout (adapt bucket names freely):
-\begin{verbatim}
-s3://lichess-raw/pgn/lichess_db_standard_rated_2017-04.pgn.zst
-s3://lichess-processed/fact_games/year=2017/month=04/part-00000-....parquet
-s3://lichess-processed/dim_player/part-00000-....parquet
-\end{verbatim}
+\subsection{Justification for the star schema}
+The star schema was chosen because it directly supports the two main consumer groups in the pipeline:
 
-\providecommand*\StorageLakeFig{figures/lake-partitions.pdf}
-\IfFileExists{\StorageLakeFig}{%
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth,height=0.42\textheight,keepaspectratio]{lake-partitions}
-  \caption[Lake buckets and partition prefixes]{Physical lake layout: raw versus processed prefixes and Hive-style partitioning.}
-  \label{fig:storage-lake-layout}
-\end{figure}%
-}{%
-\begin{figure}[htbp]
-  \centering
-  \fbox{%
-    \begin{minipage}{0.88\linewidth}
-      \centering
-      \vspace{1.25cm}
-      \textbf{Lake partitioning diagram}\\[0.5em]
-      \small Twin buckets \(\rightarrow\) path tree with \texttt{year=/month=} keys\\
-      Embed \texttt{figures/lake-partitions.pdf}\\\vspace{1.25cm}
-    \end{minipage}}
-  \caption[Lake buckets and partition prefixes]{Physical lake layout: raw versus processed prefixes and Hive-style partitioning.}
-  \label{fig:storage-lake-layout}
-\end{figure}%
-}
-
-\subsection{Fact and dimension tables}
-\label{sec:storage-logical-star}
-
-\textit{Write: surrogate keys, slow-changing note for players if applicable, optional \(\texttt{fact\_moves}\) grain.}
-\providecommand*\StorageStarFig{figures/star-schema-erd.pdf}
-\IfFileExists{\StorageStarFig}{%
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{star-schema-erd}
-  \caption[Star schema for games, players, openings, dates]{Ingested dimensional model centred on \(\texttt{fact\_games}\) with \(\texttt{dim\_player}\), \(\texttt{dim\_opening}\)/\texttt{eco}, \(\texttt{dim\_date}\), optional \(\texttt{fact\_moves}\).}
-  \label{fig:storage-star-erd}
-\end{figure}%
-}{%
-\begin{figure}[htbp]
-  \centering
-  \fbox{%
-    \begin{minipage}{0.88\linewidth}
-      \centering
-      \vspace{1.4cm}
-      \textbf{Crow-foot ERD}\\[0.5em]
-      \small Centres on \(\texttt{fact\_games}\); dimensions \(\texttt{dim\_player}\), \(\texttt{dim\_opening}\)/\texttt{eco}, \(\texttt{dim\_date}\)\\
-      Embed \texttt{figures/star-schema-erd.pdf}\\\vspace{1.4cm}
-    \end{minipage}}
-  \caption[Star schema for games, players, openings, dates]{Ingested dimensional model centred on \(\texttt{fact\_games}\) with \(\texttt{dim\_player}\), \(\texttt{dim\_opening}\)/\texttt{eco}, \(\texttt{dim\_date}\), optional \(\texttt{fact\_moves}\).}
-  \label{fig:storage-star-erd}
-\end{figure}%
-}
-
-\textbf{Grain reminders (expand in prose nearby):}
-\begin{itemize}[nosep]
-  \item \(\texttt{fact\_games}\): \textit{populate keys and measures (elo gap, \(\texttt{time\_control\_bucket}\), etc.).}
-  \item \(\texttt{dim\_player}\): \textit{populate descriptive attributes.}
-  \item \(\texttt{dim\_opening}\) / \(\texttt{eco}\): \textit{populate nomenclature fields.}
-  \item \(\texttt{dim\_date}\): \textit{populate calendar facets.}
-  \item \(\texttt{fact\_moves}\) \emph{(optional)}: \textit{populate per-half-move telemetry.}
-\end{itemize}
-
-\subsection{Why a star schema fits this pipeline}
-\label{sec:storage-star-justify}
-
-\textit{Narrate analytic consumers from \cref{ch:pipeline-planning}: notebooks needing friendly joins versus batch feature materialisation.}
-\begin{table}[htbp]
-  \centering
-  \caption{Mapping analytical needs onto the dimensional layout.}
-  \label{tab:star-schema-fit}
-  \footnotesize
-  \setlength{\tabcolsep}{4pt}
-  \renewcommand{\arraystretch}{1.12}
-  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.42\linewidth} >{\raggedright\arraybackslash}p{0.52\linewidth}@{}}
-    \toprule
-    Need & How the proposed star layout answers it\\
-    \midrule
-    \textit{(ML / Feast style features)} & \textit{Populate: entity keys vs fact grain.}\\[0.15em]
-    \textit{(Storage efficiency)} & \textit{Populate: repeated vs consolidated attributes.}\\[0.15em]
-    \textit{(Notebook query ergonomics)} & \textit{Populate: join breadth versus width.}\\[0.15em]
-    \textit{(Incremental monthly loads)} & \textit{Populate: partition append strategy.}\\[0.15em]
-    \textit{(Quality gates / DQ tooling)} & \textit{Populate: table-scoped assertions.}\\[0.15em]
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsection{Benefits and drawbacks we accept}
-\label{sec:storage-star-tradeoffs}
-
-\textit{Write: unavoidable join cost versus duplicated keys, redundancy in slowly changing snapshots, tooling burden.}
-Trade-offs deliberately mirror \cref{tab:storage-pattern-tradeoffs}.
-
-\section{Other layouts we considered and rejected}
-\label{sec:storage-alternatives}
-
-\subsection{One wide table}
-\label{sec:alt-obt}
-
-\textit{Write: duplication of player facets, rewriting cost for schema tweaks, pitfalls for temporal correctness.}
-\textit{Cite illustrative row width concerns if pertinent.}
-
-\subsection{Fully normalised relational}
-\label{sec:alt-3nf}
-
-\textit{Write: anomaly-free updates versus join-heavy analytics for hundreds of millions of games.}
-
-\subsection{Snowflake-style dimensions}
-\label{sec:alt-snowflake}
-
-\textit{Write: negligible hierarchy depth for \(\texttt{ECO}\) versus added join chaining.}
-
-\subsection{Medallion / bronze-silver layering (optional comparison)}
-\label{sec:alt-medallion}
-
-\textit{Write: complements versus replaces star layout; cite how raw stays immutable anyhow.}
 
 \begin{table}[htbp]
-  \centering
-  \caption{Structural alternatives versus the favoured lakehouse dimensional pattern.}
-  \label{tab:storage-pattern-tradeoffs}
-  \scriptsize
-  \setlength{\tabcolsep}{3.5pt}
-  \renewcommand{\arraystretch}{1.08}
-  \begin{tabular}{@{}
-    >{\raggedright\arraybackslash}p{0.19\linewidth}
-    >{\raggedright\arraybackslash}p{0.25\linewidth}
-    >{\raggedright\arraybackslash}p{0.25\linewidth}
-    >{\raggedright\arraybackslash}p{0.25\linewidth}@{}}
-    \toprule
-    Approach & Upside articulation & Downside \& mitigation & Why not chosen\\
-    \midrule
-    One big table &
-      \textit{Populate benefit: join-free notebooks.} &
-      \textit{Populate risk: redundancy, brittle evolution.} &
-      \textit{Populate disqualifier: duplicative telemetry.}\\[0.2em]
-    Star schema (chosen) &
-      \textit{Populate benefit: aligns with aggregates + ML joins.} &
-      \textit{Populate drawbacks + how you soften them.} &
-      ---\\[0.2em]
-    Snowflake variant &
-      \textit{Populate benefit: narrower dimension footprints.} &
-      \textit{Populate downside: cascading joins + governance.} &
-      \textit{Populate disqualifier versus star simplicity.}\\[0.2em]
-    Normalised relational (3NF) &
-      \textit{Populate upside: disciplined updates.} &
-      \textit{Populate downside: analyst friction at scale.} &
-      \textit{Populate disqualifier for BI + ML ergonomics.}\\[0.2em]
-    Medallion layering hybrid &
-      \textit{Populate upside: aligns with phased quality gates.} &
-      \textit{Populate downside: overlaps with partitioning story.} &
-      \textit{Populate rationale if still complementary.}\\[0.2em]
-    \bottomrule
-  \end{tabular}
+    \centering
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabular}{|p{0.3\textwidth}|p{0.65\textwidth}|}
+        \hline
+        \textbf{Need} & \textbf{How the star schema meets it} \\ \hline
+        ML feature engineering (Feast) & Feast works with entity keys; the fact table and dimensions can be mapped to Feast FeatureViews with simple joins on player, opening, or date keys. Point-in-time joins are straightforward. \\ \hline
+        Analyst / Data Scientist notebooks & A single join from the fact table to a dimension is enough for most queries; no complex multi-table logic. \\ \hline
+        Storage efficiency & Player attributes (username, title) are stored once, not repeated per game. Parquet columnar compression reduces the footprint further. \\ \hline
+        Incremental monthly loads & Partitioning on year/month means new months are appended; dimensions are updated with a merge without rewriting the whole fact table. \\ \hline
+        Data quality checks & Each table can have a dedicated Great Expectations suite (e.g., null checks on fact columns, uniqueness on dimension keys). \\ \hline
+    \end{tabular}
 \end{table}
 
-\section{From download to curated tables (ELT, not ETL)}
-\label{sec:storage-elt}
+\section{Benefits, drawbacks and Mitigation of the star schema}
+The model is easy to explain to both engineers and data scientists – “games, players, openings, dates” maps directly to the domain.
 
-Orchestration touchpoints reuse \cref{fig:etl-flow,fig:data-ingestion}.
+It avoids the massive duplication of a single wide table.
 
-\providecommand*\StorageEltFig{figures/storage-elt.pdf}
-\IfFileExists{\StorageEltFig}{%
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth,height=0.38\textheight,keepaspectratio]{storage-elt}
-  \caption[ELT lineage reference to pipeline figures]{ELT lineage snapshot: authoritative pipeline figures appear in~\cref{fig:etl-flow,fig:data-ingestion}; annotate validation hand-offs here.}
-  \label{fig:storage-elt-flow}
-\end{figure}%
-}{%
-\begin{figure}[htbp]
-  \centering
-  \fbox{%
-    \begin{minipage}{0.88\linewidth}
-      \centering
-      \vspace{1.1cm}
-      \textbf{Optional consolidated ELT DAG}\\[0.45em]
-      \small Extend Airflow \(\rightarrow\) MinIO \(\rightarrow\) Spark \(\rightarrow\) Parquet \(\rightarrow\) validation gate\\
-      Drop vector export at \texttt{figures/storage-elt.pdf} when you unify diagrams.\\\vspace{1.1cm}
-    \end{minipage}}
-  \caption[ELT lineage reference to pipeline figures]{ELT lineage snapshot: authoritative pipeline figures appear in~\cref{fig:etl-flow,fig:data-ingestion}; annotate validation hand-offs here.}
-  \label{fig:storage-elt-flow}
-\end{figure}%
-}
+It fits the write‑once, read‑many nature of this data.
 
-\subsection{Land the raw archive unchanged}
-\label{sec:elt-raw}
+Queries that need multiple dimensions require joins, but the dimensions are small and DuckDB/Spark handle columnar joins efficiently.
 
-\textit{Write: downloader task, cryptographic compare, immutable object-key policy.}
-\begin{itemize}[nosep]
-  \item \textit{Dag/task-level checks (populate orchestration tooling).}
-  \item \textit{Operational alert hooks (populate channels).}
-\end{itemize}
 
-\subsection{Parse, hydrate dimensions, and write Parquet}
-\label{sec:elt-transform}
+There is slight redundancy: \texttt{last\_known\_elo} in \texttt{dim\_player} could be derived from the fact table, but keeping it speeds up “current rating” lookups.
 
-\textit{Write: Spark read of compressed blobs, \(\texttt{python-chess}\) UDF caveat, partitioning write, validation suite.}
-\begin{itemize}[nosep]
-  \item \textit{Promote parsed headers vs optional move telescope.}
-  \item \textit{Great Expectations (or analogue) checkpoints before exposing consumers.}
-\end{itemize}
 
-\section{How this storage plan changed along the way}
-\label{sec:storage-iteration}
+Schema evolution (e.g., adding a new dimension) requires careful handling, but Parquet supports schema merging and new dimensions can be added independently.
 
-\textit{Brief deltas only (\(\sim\)70 words elsewhere); enlarge reflective narrative inside \cref{ch:reflection}.}
-\begin{itemize}[nosep]
-  \item \textit{Pivot \textnumero\,1 (\textrm{CSV} \(\rightarrow\) \textrm{Parquet}); fill reasoning.}
-  \item \textit{Pivot \textnumero\,2 (local transforms \(\rightarrow\) lake ELT); fill reasoning.}
-  \item \textit{Pivot \textnumero\,3 (single flat analytic table \(\rightarrow\) star \(\rightarrow\) optional \(\texttt{fact\_moves}\)); fill reasoning.}
-  \item \textit{Pivot \textnumero\,4 (embedded DuckDB\,/\,Feast store notes); fill reasoning.}
-\end{itemize}
 
-% ----- Optional Draw.io seed (Mermaid syntax; not typeset): paste into exporters -----
-% ```mermaid
-% erDiagram
-%   FACT_GAMES ||--o{ DIM_PLAYER : white_key
-%   FACT_GAMES ||--o{ DIM_PLAYER : black_key
-%   FACT_GAMES ||--|| DIM_DATE : played_on
-%   FACT_GAMES ||--|| DIM_OPENING : eco_key
-%   FACT_GAMES ||--o{ FACT_MOVES : contains
-% ```
-%
-% ```mermaid
-% flowchart LR
-%   subgraph raw [landing]
-%     L[Lichess monthly zst]
-%   end
-%   subgraph lake [lake]
-%     Airflow-->MinIORaw[(MinIO raw)]
-%     MinIORaw-->SparkJobs[Spark parse]
-%     SparkJobs-->MinIOCur[(MinIO parquet)]
-%     MinIOCur-->DQ[DQ gate]
-%   end
-%   L-->Airflow
-% ```
+\section{Alternative structure}
+\begin{table}[htp!]
+    \centering
+    \begin{tabular}{|p{3cm}|p{3.5cm}|p{4.5cm}|p{3.5cm}|}
+        \hline
+        \textbf{Approach} & \textbf{Upside} & \textbf{Downside \& Mitigation} & \textbf{Why not chosen} \\ \hline
+        One Big Table & Zero joins, simple CSV & Huge duplication, brittle schema, breaks temporal correctness & Duplication and temporal fidelity risk too high \\ \hline
+        Star Schema (chosen) & Familiar, fits Feast, good compression, incremental & Joins needed; mitigated by columnar scans and small dimensions & --- \\ \hline
+        Snowflake & Even less redundancy in dimensions & Extra joins for minimal gain (shallow ECO hierarchy) & Complexity doesn’t pay off \\ \hline
+        3NF relational & Clean updates, no anomalies & Many‑table joins hurt read speed at scale & Append‑heavy workload; read performance more important \\ \hline
+        Medallion layers & Clear quality gates & Overlaps with raw/processed bucket split & Redundant; our raw bucket already provides the “bronze” layer \\ \hline
+    \end{tabular}
+\end{table}
+
+
+\section{Extraction, Loading, and Transformation (ELT)}
+I follow an ELT pattern, not ETL, because the heavy transformation happens after the data lands in the object store MinIO.
+
+\subsection{Extract}
+An Airflow DAG (or a cron job) downloads the .pgn.zst from Lichess, checks the SHA256 sum, and uploads it unchanged to s3://lichess-raw/pgn/....
+
+If the checksum fails, the task stops and sends an alert.
+
+\subsection{Transform}
+A PySpark job reads the raw .zst stream directly from MinIO.
+
+It decompresses the Zstandard stream and uses a python-chess UDF to parse each game into:
+
+    A row for \texttt{fact\_games} (from the header tags plus derived fields like \texttt{num\_moves}).
+
+    Optionally rows for \texttt{fact\_moves} (each half‑move with evaluations and clock times).
+
+Distinct lists of players, openings, and dates are collected and deduplicated to populate \texttt{dim\_player}, \texttt{dim\_opening}, and \texttt{dim\_date}.
+
+The DataFrames are written back to s3://lichess-processed/ as Parquet, with fact tables partitioned by year/month.
+
+\subsection{Validation}
+A Great Expectations checkpoint runs on the new Parquet partitions, verifying schemas, null ratios, and allowed value sets. Only if it passes are the new partitions released to downstream consumers (Feast, notebooks).
+

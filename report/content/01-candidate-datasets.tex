@@ -1,28 +1,29 @@
 \chapter{Candidate source datasets (Exercise 1, Step 1)}
 \label{ch:candidate-datasets}
 
-This chapter records three plausible primary sources for supervised learning alongside the structured discussion required before any pipeline blueprint is credible.
-Consistency across candidates makes comparative reading easier once the favoured dataset is defended in~\cref{sec:chosen-dataset}.
+Three supervised sources anchor~\cref{ch:pipeline-planning}; we forecast outcomes~\cref{tab:lichess-ml-features}; choice in~\cref{sec:chosen-dataset}.
+\Cref{fig:step1-candidate-matrix} summarises each candidate against the Step~1 review dimensions.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{step1.pdf}
+  \caption{Candidate dataset comparison across provenance, structure, storage, and supervised-learning affordances (Exercise~1, Step~1).}
+  \label{fig:step1-candidate-matrix}
+\end{figure}
 
 \section{Learning objective framing}
 \label{sec:learning-objective}
 
-State the predictive question, the intended label, approximate unit of analysis (row grain), constraints on latency and governance, how success will be measured, and regulatory or ethical sensitivities upfront.
-Readers should understand why each candidate could support that objective without yet committing to ingestion mechanics.
+One row per game; accuracy plus calibration by time control; CC0 corpus without PHI.
 
 \section[Dataset one]{Candidate dataset \textnumero\,1}
 \label{sec:dataset-one}
 
 \subsection{Purpose, provenance, and lineage}
-\textbf{Lichess} is an open source online chess platform alternative to \textbf{chess.com}. It is famous for the handling the millions of games with being one developer only. Monthly it dumps the database of all games played on the platform. The dataset contains information about the players, the moves, and the outcomes of the games. The dataset is updated monthly and is available for download on the Lichess website. The dataset is used by researchers and developers to analyze chess games and to develop chess engines.
-
-It can be obtained from \url{https://database.lichess.org/}. It is currently distributed in \texttt{.pgn.zst} format, a compressed variant of Portable Game Notation (PGN). The dataset is refreshed monthly and is available for download on the Lichess website.
-A monthly shard inventory, licence summary, format sample, and ingestion caveats are collated for reproducibility in \cref{app:lichess-open-database}.
-
+\textbf{Lichess} ships monthly rated \texttt{.pgn.zst} archives (\url{https://database.lichess.org/}) with outcomes, clocks, ratings, openings, and SAN movelists~\cite{lichess_open_database}; see~\cref{app:lichess-open-database} for inventory.
 
 \subsection{Logical and physical portrayal}
-Contrast the logical abstraction (tables, hierarchies, event streams, documents) against on-disk realities (indexes, parquet row groups, API pagination, blobs).
-Readers should envision how exploratory queries behave before transformation.
+Headers plus ordered moves form the logical model (\cref{fig:dataset-one-logical-erd}); physically the corpus is compressed text shards, not ready-made tables.
 
 \begin{figure}[htbp]
   \centering
@@ -32,7 +33,7 @@ Readers should envision how exploratory queries behave before transformation.
 \end{figure}
 
 \subsection{Supervised modelling affordances}
-The Lichess database is well-suited for supervised learning tasks, particularly with win/loss/draw outcome prediction. The dataset contains a large number of games, which provides a rich source of data for training machine learning models. The dataset also includes information about the players, such as their ratings and the time control of the game, which can be used as features for modeling. Additionally, the dataset is updated monthly, which allows for continuous learning and model improvement over time.
+Large scale and monthly refresh suit continual learning;~\cref{tab:lichess-ml-features} catalogues headline labels/features.
 
 \begin{table}[htbp]
   \centering
@@ -81,48 +82,52 @@ The Lichess database is well-suited for supervised learning tasks, particularly 
 \end{table}
 
 
-
-
-
-\subsection{Illustrative structure diagram}
-\Cref{fig:dataset-one-logical-erd} may be swapped for a production-grade ERD exported from modelling tools whenever naming or cardinality is refined during harmonisation.
-
 \section[Dataset two]{Candidate dataset \textnumero\,2}
 \label{sec:dataset-two}
 
-Mirror~\cref{sec:dataset-one} with shorter prose focusing on deltas: sampling differences, orthogonal coverage, interoperability pain points, supplementary labels, tooling gaps.
+\textbf{Wine Quality}~\cite{Cortez2009wine,UCIWineQuality}: static CSV with physicochemical assays and ordinal quality scores---simple ingestion but stale versus monthly Lichess.
 
 \section[Dataset three]{Candidate dataset \textnumero\,3}
 \label{sec:dataset-three}
 
-Stress-test diversity: alternatively sourced modalities, freshness trade-offs, cost of ingestion, suitability for ensembles, redundancy with Dataset~1/2.
+\textbf{Fashion-MNIST}~\cite{XiaoFashionMNIST}: \(28{\times}28\) grayscale apparel images from GitHub or torch loaders, stressing CV pipelines rather than transactional chess telemetry.
 
 \section{Chosen dataset and justification}
 \label{sec:chosen-dataset}
 
-The \textbf{Lichess Open Database} was selected as the primary dataset due to its large scale, realistic data engineering challenges, rich machine learning features, and open CC0 licence. It supports both classification and regression tasks within the same records and has been widely used in prior research, providing reliable benchmarks. In contrast, smaller datasets such as Boston Housing and Wine Quality are useful only for basic proof-of-concept models because of their limited size and static nature.
-
-\Cref{tab:dataset-matrix} aggregates talking points demanded by markers.
+We select the Lichess open database for MLOps development: scale, embedded labels, \textsc{cc}0 licensing, and monthly refresh outweigh the simpler Wine Quality and Fashion-MNIST baselines (\cref{sec:dataset-two,sec:dataset-three}).
 
 \begin{table}[htbp]
   \centering
-  \caption{High-level contrasts across shortlisted sources.}
-  \label{tab:dataset-matrix}
-  \footnotesize
-  \setlength{\tabcolsep}{3.5pt}
-  \renewcommand{\arraystretch}{1.12}
-  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.20\linewidth}
-                  >{\raggedright\arraybackslash}p{0.26\linewidth}
-                  >{\raggedright\arraybackslash}p{0.26\linewidth}
-                  >{\raggedright\arraybackslash}p{0.22\linewidth}@{}}
+  \caption{Operational profile of the selected Lichess corpus (Step~1 review dimensions).}
+  \label{tab:lichess-operational-profile}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.21\linewidth}
+                  >{\raggedright\arraybackslash}p{0.73\linewidth}@{}}
     \toprule
-    Aspect & Candidate~1 & Candidate~2 & Candidate~3\\
+    Dimension & Assessment\\
     \midrule
-    Primary modality & Populate & Populate & Populate\\
-    Sampling frame & Populate & Populate & Populate\\
-    Target clarity & Populate & Populate & Populate\\
-    Access path & Populate & Populate & Populate\\
-    Notable caveat & Populate & Populate & Populate\\
+    Volume and velocity &
+      Approximately \(7.68\times10^{9}\) rated games in \(\sim\)2.43\,TB of Zstandard-compressed PGN (\cref{app:lichess-open-database}).
+      Non-cumulative monthly dumps add on the order of \(5\times10^{7}\)--\(10^{8}\) games per month.\\
+    Schema complexity &
+      No fixed relational schema: tag sets vary by tempo and ruleset (\texttt{[TimeControl]} differs across bullet, blitz, and rapid; \texttt{[Variant]} spans standard chess, Chess960, Crazyhouse, and related modes).
+      Movetext is encoded in SAN, requiring parse or tokenisation pipelines.
+      Field inventories evolve gradually---newer months introduce headers such as \texttt{[Accuracy]} or \texttt{[Termination]} absent from early releases.\\
+    Data quality and sparsity &
+      Mix of elite (\(\geq 2500\) Elo) and casual pairings; optional tags may be absent (\texttt{[Opening]} unset for off-book positions).
+      Outcome priors are tempo-dependent: draws account for \(<2\%\) of bullet (\texttt{1+0}) games but approach \(10\)--\(15\%\) under classical controls.
+      Rating-delta targets are noisy when provisional ratings apply to new accounts.\\
+    Temporal and causal structure &
+      UTC timestamps support chronological splits and back-testing; monthly partitions suit incremental ingestion.
+      Player-level correlation violates independence for rating-change targets---splits should respect time or player identifiers, not naive random shuffling.\\
+    Operational limitation &
+      Bulk exports are post hoc monthly artefacts, not a live stream.
+      Near-real-time inference would require a complementary WebSocket feed in addition to the open-database cadence.\\
     \bottomrule
   \end{tabular}
 \end{table}
+
+

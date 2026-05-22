@@ -1,6 +1,6 @@
 # Figures for `report/build/main.pdf`
 
-Most pipeline diagrams are raster/vector exports checked in beside this file (`etl.pdf`, `dataIngestion.pdf`, …). Ghostscript normalization for pdfLaTeX is documented in the project [`README.md`](../README.md).
+Most pipeline diagrams are raster/vector exports checked in beside this file (`elt.pdf`, `dataIngestion.pdf`, …). Ghostscript normalization for pdfLaTeX is documented in the project [`README.md`](../README.md).
 
 ## Chapter 3 placeholders (Exercise 1, Step 3)
 
