@@ -10,6 +10,6 @@ When you draft storage-specific artwork, export **PDF** (ideally PDF 1.5 after n
 |----------|----------------|
 | `lake-partitions.pdf` | Twin MinIO buckets: raw `.pgn.zst` prefixes vs curated Parquet prefixes with `year=/month=` partitioning. |
 | `star-schema-erd.pdf` | Crow’s-foot ERD: `fact_games`, `dim_player`, `dim_opening` / `eco`, `dim_date`, optional `fact_moves`. |
-| `storage-elt.pdf` | Optional single-page DAG consolidating Lichess $\rightarrow$ Airflow $\rightarrow$ raw MinIO $\rightarrow$ Spark $\rightarrow$ partitioned Parquet + validation gate (the skeleton already cross-references `etl-flow` / `data-ingestion`). |
+| `storage-elt.pdf` | Optional single-page DAG consolidating Lichess $\rightarrow$ Airflow $\rightarrow$ raw MinIO $\rightarrow$ Spark $\rightarrow$ partitioned Parquet + validation gate (the skeleton already cross-references `elt-flow` / `data-ingestion`). |
 
 Until those files exist, the chapter renders **boxed placeholders** (`\IfFileExists{…}` branches in the source).

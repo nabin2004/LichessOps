@@ -36,7 +36,7 @@ The cardinality is one game to zero-or-many moves.
 
 \section{Ingested Data Storage}
 \label{ingested_data_storage}
-After the raw file, it is transformed into a set of parquet tables arraanged in a start schema. I'm using an ETL approach. The raw .zst is loaded first, then transformation happens using Apache Spark, and the results are written to the DuckDB which is a columnar database.
+After extraction and loading, the raw \texttt{.zst} object is transformed into a set of Parquet tables arranged in a star schema. I follow an ELT pattern: the compressed file lands unchanged in MinIO first (load), then Apache Spark reads from object storage to parse and shape the data (transform), and the curated tables are written to MinIO as Parquet and loaded into DuckDB for analytics.
 
 
 \subsection{Why Parquet?}
@@ -80,20 +80,7 @@ The star schema was chosen because it directly supports the two main consumer gr
 \end{table}
 
 \section{Benefits, drawbacks and Mitigation of the star schema}
-The model is easy to explain to both engineers and data scientists – “games, players, openings, dates” maps directly to the domain.
-
-It avoids the massive duplication of a single wide table.
-
-It fits the write‑once, read‑many nature of this data.
-
-Queries that need multiple dimensions require joins, but the dimensions are small and DuckDB/Spark handle columnar joins efficiently.
-
-
-There is slight redundancy: \texttt{last\_known\_elo} in \texttt{dim\_player} could be derived from the fact table, but keeping it speeds up “current rating” lookups.
-
-
-Schema evolution (e.g., adding a new dimension) requires careful handling, but Parquet supports schema merging and new dimensions can be added independently.
-
+The star schema model is straightforward to communicate to both engineers and data scientists because breaking the dataset into games, players, openings, and dates maps naturally to the chess domain. By using this approach, we avoid the massive data duplication that typically plagues a single, wide table. This structure also perfectly complements the write-once, read-many nature of historical chess data. While queries requiring multiple dimensions do need joins, the dimensions are relatively small, and engines like DuckDB or Spark manage these columnar joins quite efficiently. We accepted a minor bit of redundancy, such as storing the \texttt{last\_known\_elo} directly in the \texttt{dim\_player} table instead of constantly recalculating it from the fact table, simply because it makes looking up current ratings significantly faster. Finally, although evolving the schema—like adding a brand new dimension—demands careful coordination, using Parquet makes this manageable by supporting schema merging and allowing new dimensions to be introduced independently over time.
 
 \section{Alternative structure}
 \begin{table}[htp!]
@@ -111,35 +98,26 @@ Schema evolution (e.g., adding a new dimension) requires careful handling, but P
 
 
 \section{Extraction, Loading, and Transformation (ELT)}
-I follow an ELT pattern, not ETL, because the heavy transformation happens after the data lands in the object store MinIO.
+I follow an ELT pattern because the heavy transformation happens after the data lands in the object store MinIO.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{elt.pdf}
   \caption{ELT pattern with object storage.}
-  \label{fig:etl-flow}
+  \label{fig:elt-flow}
 \end{figure}
 
 
 
 \subsection{Extract}
-An Airflow DAG (or a cron job) downloads the .pgn.zst from Lichess, checks the SHA256 sum, and uploads it unchanged to s3://lichess-raw/pgn/....
+An Airflow DAG fetches each monthly \texttt{.pgn.zst} file from Lichess over HTTPS and checks it against the published SHA256 checksum. A mismatch fails the task and triggers an alert.
 
-If the checksum fails, the task stops and sends an alert.
+\subsection{Load}
+The verified file lands in MinIO at \texttt{s3://lichess-raw/pgn/...} without decompression or parsing. It stays there as an immutable archive until Spark reads it.
 
 \subsection{Transform}
-A PySpark job reads the raw .zst stream directly from MinIO.
-
-It decompresses the Zstandard stream and uses a python-chess UDF to parse each game into:
-
-    A row for \texttt{fact\_games} (from the header tags plus derived fields like \texttt{num\_moves}).
-
-    Optionally rows for \texttt{fact\_moves} (each half‑move with evaluations and clock times).
-
-Distinct lists of players, openings, and dates are collected and deduplicated to populate \texttt{dim\_player}, \texttt{dim\_opening}, and \texttt{dim\_date}.
-
-The DataFrames are written back to s3://lichess-processed/ as Parquet, with fact tables partitioned by year/month.
+PySpark streams the \texttt{.zst} object from MinIO, decompresses it in-flight, and parses games with a python-chess UDF. Headers and derived fields (e.g.\ move count) go to \texttt{fact\_games}; half-moves, engine evaluations, and clock times optionally go to \texttt{fact\_moves}. Distinct players, openings, and dates are merged into \texttt{dim\_player}, \texttt{dim\_opening}, and \texttt{dim\_date}. Curated tables are written to \texttt{s3://lichess-processed/} as Parquet, with fact tables partitioned by year and month.
 
 \subsection{Validation}
-A Great Expectations checkpoint runs on the new Parquet partitions, verifying schemas, null ratios, and allowed value sets. Only if it passes are the new partitions released to downstream consumers (Feast, notebooks).
+Great Expectations runs a checkpoint on each new partition (schema, null rates, value bounds). Partitions that pass are released to Feast and analyst notebooks.
 
