@@ -1,0 +1,13 @@
+# Interactive DuckDB CLI (profile `tools`). Example:
+# docker compose --profile tools run --rm duckdb duckdb_data.db
+services:
+  duckdb:
+    image: duckdb/duckdb
+    profiles: [tools]
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    # DuckDB notebook UI listens on localhost; host networking matches native usage.
+    network_mode: host

@@ -1,0 +1,23 @@
+services:
+  gx-metadata-db:
+    image: postgres:16-alpine
+    container_name: lichess-gx-metadata
+    profiles: [ge]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${GX_POSTGRES_USER:-gx_user}
+      POSTGRES_PASSWORD: ${GX_POSTGRES_PASSWORD:-gx_password}
+      POSTGRES_DB: ${GX_POSTGRES_DB:-great_expectations}
+    volumes:
+      - gx_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${GX_POSTGRES_USER:-gx_user} -d ${GX_POSTGRES_DB:-great_expectations}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lichess-net
+
+volumes:
+  gx_postgres_data: {}

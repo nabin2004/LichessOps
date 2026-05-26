@@ -1,0 +1,78 @@
+# Lichess Compose services
+
+All stacks are merged from the repository root via [`docker-compose.yml`](../docker-compose.yml) (`name: lichess`). Shared network **`lichess-net`** and the **`minio_data`** volume are declared in [`compose/networks.yml`](compose/networks.yml).
+
+## Prerequisites
+
+- Docker Engine >= 24 and Docker Compose v2 (supports `include`).
+- From the **repo root**, run every `docker compose` command so paths and `include:` resolve correctly.
+
+## Profiles
+
+| Profile           | Stack |
+| ----------------- | ------ |
+| **`core`**        | MinIO (S3-compatible) + one-shot bucket bootstrap (`lichess-raw`, `lichess-processed`, `mlflow-artifacts`) |
+| **`ml`**          | MLflow + dedicated Postgres (artifacts on shared MinIO — **enable `core` too**) |
+| **`monitoring`**  | Prometheus + node-exporter + Grafana (datasource auto-provisioned) |
+| **`orchestration`** | Apache Airflow (CeleryExecutor) + Postgres + Redis |
+| **`flower`**      | Celery Flower (**use with** `orchestration`, e.g. `docker compose --profile orchestration --profile flower up -d flower`) |
+| **`pipeline`**    | Spark master + worker (master UI on host **8081**; S3 env wired to MinIO) |
+| **`feast`**       | Legacy Feast **0.11.x** demo (Postgres, Redis, Kafka, core, serving, job service, Jupyter) |
+| **`evidently`**   | Minimal Evidently-oriented FastAPI (**5001**) + Streamlit (**8501**) + Postgres |
+| **`ge`**          | Postgres for Great Expectations **metadata** only (run validations from `lichess-data` on the host or another image) |
+| **`tools`**       | Interactive DuckDB CLI (`docker compose --profile tools run --rm duckdb`) |
+| **`debug`**       | Airflow `airflow-cli` service |
+
+Compose **does not start any service until you pass at least one profile** that matches. `docker compose config` with no profiles expands to `services: {}` by design.
+
+## Common commands
+
+```bash
+# Inspect merged file (always pass the profiles you plan to run)
+docker compose --profile core --profile ml config --quiet
+
+# Object store + experiment tracking
+docker compose --profile core --profile ml up -d
+
+# Add metrics / dashboards
+docker compose --profile monitoring up -d
+
+# Airflow (first run may take several minutes for migrations)
+docker compose --profile orchestration up -d
+
+# Spark (MinIO creds default to minioadmin; start `core` if jobs need S3)
+docker compose --profile core --profile pipeline up -d
+```
+
+## Host ports (defaults)
+
+| Port  | Service |
+| ----- | ------- |
+| 9000 / 9001 | MinIO API / console |
+| 5000 | MLflow UI |
+| 5001 | Evidently API (stub) |
+| 3000 | Grafana |
+| 9090 | Prometheus |
+| 9100 | node-exporter |
+| 8080 | Airflow API server |
+| 8081 | Spark master UI |
+| 7077 | Spark master RPC |
+| 5555 | Flower (when `flower` profile is used) |
+| 8501 | Evidently Streamlit |
+| 6565 / 6566 / 8888 / 9094 | Feast gRPC / gRPC / Jupyter / Kafka external listener |
+
+Postgres and Redis for Airflow, MLflow, Evidently, GE, and Feast are **not published** to the host.
+
+## Environment
+
+- [`services/.env.example`](.env.example) — shared variables (MinIO, Grafana admin, GX DB, Evidently DB, `AIRFLOW_UID`).
+- [`services/feast/.env.example`](feast/.env.example) — Feast version and DB defaults.
+- **`services/airflow/.env`** — optional; Airflow image reads `AIRFLOW_UID` here (do not commit secrets).
+
+## Implementation notes
+
+- **MinIO** uses a pinned `minio/minio` image and a named volume (no bind-mounted `./data`). The `minio_setup` job uses `minio/mc` to create buckets.
+- **MLflow** no longer embeds MinIO; it depends on the shared `minio` service.
+- **Grafana** ships only inside **`services/prometheus/`**; the old standalone `services/grafana/` stack was removed.
+- **Feast 0.11** is optional and legacy; modern Feast projects typically use the Feast CLI with different images.
+- **DuckDB** uses `network_mode: host` so `CALL start_ui()` matches native DuckDB UI expectations on Linux.

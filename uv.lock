@@ -190,6 +190,10 @@ name = "lichess-data"
 version = "0.1.0"
 source = { editable = "packages/lichess_data" }
 dependencies = [
+    { name = "chess" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pyarrow" },
     { name = "tqdm" },
 ]
 
@@ -199,7 +203,13 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "tqdm", specifier = ">=4.67.3" }]
+requires-dist = [
+    { name = "chess", specifier = ">=1.11.2" },
+    { name = "numpy", specifier = ">=2.4.6" },
+    { name = "pandas", specifier = ">=3.0.3" },
+    { name = "pyarrow", specifier = ">=24.0.0" },
+    { name = "tqdm", specifier = ">=4.67.3" },
+]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]

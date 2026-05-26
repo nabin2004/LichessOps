@@ -7,6 +7,7 @@ download:
   skip_existing: true
 
 extract:
-  # Input/output paths are typically set per run or derived from a downloaded shard.
-  # Example: artifacts/lichess_data/raw/pgn/lichess_db_standard_rated_2013-01.pgn.zst
+  # Input is passed on the CLI; output defaults under this artifact subpath.
+  # Example input: artifacts/lichess_data/raw/pgn/lichess_db_standard_rated_2013-01.pgn.zst
+  output_subpath: processed
   batch_size: 5000

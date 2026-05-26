@@ -1,0 +1,18 @@
+FROM python:3.12-slim-bookworm
+
+ARG USER_ID=1000
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends wget \
+    && rm -rf /var/lib/apt/lists/*
+RUN groupadd -g "${USER_ID}" appuser \
+    && useradd -lm -u "${USER_ID}" -g "${USER_ID}" appuser
+
+WORKDIR /app
+COPY src/app_fastapi /app/app_fastapi
+RUN pip install --no-cache-dir "fastapi>=0.115,<1" "uvicorn[standard]>=0.32,<1" \
+    && chown -R appuser:appuser /app
+
+USER appuser
+EXPOSE 5000
+
+CMD ["uvicorn", "app_fastapi.main:app", "--host", "0.0.0.0", "--port", "5000"]

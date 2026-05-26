@@ -1,0 +1,89 @@
+services:
+  evidently-api:
+    build:
+      context: .
+      dockerfile: src/Dockerfile.fastapi
+      args:
+        USER_ID: ${USER_ID:-1000}
+    image: lichess-evidently-api:latest
+    container_name: lichess-evidently-api
+    profiles: [evidently]
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    environment:
+      POSTGRES_HOST: evidently-postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${EVIDENTLY_POSTGRES_DB:-evidently}
+      POSTGRES_USER: ${EVIDENTLY_POSTGRES_USER:-evidently}
+      POSTGRES_PASSWORD: ${EVIDENTLY_POSTGRES_PASSWORD:-evidently}
+    depends_on:
+      evidently-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+    networks:
+      - lichess-net
+
+  evidently-postgres:
+    image: postgres:16-alpine
+    container_name: lichess-evidently-postgres
+    profiles: [evidently]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${EVIDENTLY_POSTGRES_DB:-evidently}
+      POSTGRES_USER: ${EVIDENTLY_POSTGRES_USER:-evidently}
+      POSTGRES_PASSWORD: ${EVIDENTLY_POSTGRES_PASSWORD:-evidently}
+    volumes:
+      - evidently_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${EVIDENTLY_POSTGRES_USER:-evidently} -d ${EVIDENTLY_POSTGRES_DB:-evidently}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lichess-net
+
+  evidently-streamlit:
+    build:
+      context: .
+      dockerfile: src/Dockerfile.streamlit
+      args:
+        USER_ID: ${USER_ID:-1000}
+    image: lichess-evidently-streamlit:latest
+    container_name: lichess-evidently-streamlit
+    profiles: [evidently]
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      FASTAPI_HOST: evidently-api
+      FASTAPI_PORT: "5000"
+    depends_on:
+      evidently-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./reports:/app/reports
+    networks:
+      - lichess-net
+
+volumes:
+  evidently_pg_data: {}

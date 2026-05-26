@@ -16,7 +16,7 @@ Related docs:
 | **Notebooks** (`notebook/01`–`04`)                   | Working prototypes: PGN→Parquet extract, EDA, preprocessing features, move-level analysis                           |
 | **Packages** (`packages/lichess_*`)                  | `lichess_data` has a working monthly DB downloader + CLI; extract Parquet path still notebook-driven in places |
 | **Shared libs** (`libs/shared/`)                     | Ready: `load_config`, artifact helpers, logging                                                                     |
-| **Docker** (`docker/*/docker-compose.yml`)           | Empty placeholder files; no Dockerfiles, no unified root compose yet                                                |
+| **Docker Compose** (`[services/](../services/)`) | Root [`docker-compose.yml`](../docker-compose.yml) includes profiled stacks per component; shared network `lichess-net` + open-source MinIO; see [`services/README.md`](../services/README.md) |
 | **Report** (`report/content/02-pipeline-design.tex`) | Target architecture (Airflow, MinIO, Spark, DuckDB, Great Expectations, Feast, MLflow, FastAPI, Prometheus/Grafana) |
 
 
@@ -192,7 +192,7 @@ Only after commands succeed locally should you invoke the same CLI from Airflow 
 
 ## Docker services — target runtime
 
-The directories under `[docker/](../docker/)` mirror planned components; **their `docker-compose.yml` files are currently empty scaffolding**. Fill them following official Compose examples for each product (Airflow publishes a downloadable quick-start bundle; MinIO, MLflow, and Prometheus stacks have canonical samples).
+Subdirectories under [`services/`](../services/) carry Compose fragments that the root [`docker-compose.yml`](../docker-compose.yml) **includes**. All long-running workloads attach to a shared bridge **`lichess-net`**; stacks are gated with **profiles** so you enable only what you need (`core`, `ml`, `monitoring`, `orchestration`, `pipeline`, `feast`, `evidently`, `ge`, `tools`; plus Airflow **`flower`** and **`debug`**). Copy [`services/.env.example`](../services/.env.example) into a root or per-service `.env` for secrets — never commit real credentials. Operational detail lives in **[`services/README.md`](../services/README.md)**.
 
 Below is how those pieces relate once implemented, matching the coursework pipeline narrative.
 
@@ -239,7 +239,7 @@ flowchart LR
 
 
 
-| Path under `docker/`       | Intended responsibility                                                                 |
+| Path under `services/`     | Intended responsibility                                                                 |
 | -------------------------- | --------------------------------------------------------------------------------------- |
 | `minio/`                   | S3-compatible buckets for raw immutable `.pgn.zst` and processed Parquet prefixes       |
 | `airflow/`                 | Scheduler and web UI; mounts DAG definitions (for example under `app/dags/` when added) |
@@ -249,10 +249,10 @@ flowchart LR
 | `feast/`                   | Feature store coordinator plus offline configuration                                    |
 | `mlflow/`                  | Tracking server backed by filesystem or MinIO artifact store                            |
 | `evidently/`               | Drift dashboards or batch evaluations (parallel to Prometheus for model quality)        |
-| `prometheus/` + `grafana/` | Scrape inference latency and error budgets; Grafana dashboards                          |
+| `prometheus/`              | Prometheus + Grafana (Grafana provisioning under `services/prometheus/grafana/`)         |
 
 
-A future `**docker/docker-compose.yml` at repo root** (not present yet) can `include` or extend fragment files above and declare a shared user-defined bridge network—for example `lichess-net`—plus named volumes for MinIO data, Postgres for Airflow/MLflow metadata, and Grafana persistence.
+The **`docker-compose.yml` at repo root** already `include`s fragments under `services/` and declares shared network **`lichess-net`** plus named volumes (for example MinIO data, Postgres for Airflow / MLflow metadata, Prometheus and Grafana storage).
 
 ### How runs flow after composition
 
@@ -296,10 +296,13 @@ flowchart TB
 
 ```bash
 # Infrastructure slice while you iterate on extraction locally
-docker compose -f docker/docker-compose.yml up -d minio mlflow
+docker compose --profile core --profile ml up -d
 
-# Full stack once DAGs exist
-docker compose -f docker/docker-compose.yml up -d
+# Full stack once DAGs exist (add profiles as needed — see services/README.md)
+docker compose \
+  --profile core --profile ml --profile monitoring \
+  --profile orchestration --profile pipeline \
+  up -d
 
 # Run the data package against remote MinIO endpoints from host
 ARTIFACT_DIR=./artifacts \
@@ -307,7 +310,7 @@ ARTIFACT_DIR=./artifacts \
   uv run lichess-data extract
 ```
 
-Adapt service names (`minio`, `mlflow`) to whatever you define when you author the real Compose file.
+Adapt **profiles** (`core`, `ml`, …) to the subsets you need — `docker compose config` without profiles shows an empty service map because every stack is profile-gated.
 
 ### Environment variables to standardize early
 
@@ -340,7 +343,7 @@ download_shard
 Each task should delegate to:
 
 - `**uv run <cli>` on a worker image** baked with workspace dependencies, or
-- `**docker compose run --rm`** one-off containers per stage.
+- `**docker compose --profile <name> run --rm <service>`** one-off containers per stage (for example `tools` for DuckDB).
 
 Keep task boundaries aligned with package boundaries (`lichess_data`, `lichess_features`, `lichess_models`) so retries skip only failed layers.
 

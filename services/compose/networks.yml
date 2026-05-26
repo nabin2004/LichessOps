@@ -1,0 +1,10 @@
+# Shared project network and volumes for root docker-compose.yml includes.
+# Kept fragment-only — no services here.
+
+networks:
+  lichess-net:
+    name: lichess-net
+    driver: bridge
+
+volumes:
+  minio_data:

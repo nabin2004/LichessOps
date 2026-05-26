@@ -1,0 +1,60 @@
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.12.0-full
+    container_name: lichess-mlflow
+    profiles: [ml]
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql+psycopg2://mlflow:mlflow@mlflow-postgres:5432/mlflow
+      MLFLOW_ARTIFACT_ROOT: s3://mlflow-artifacts/
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command:
+      - mlflow
+      - server
+      - --backend-store-uri
+      - postgresql+psycopg2://mlflow:mlflow@mlflow-postgres:5432/mlflow
+      - --artifacts-destination
+      - s3://mlflow-artifacts/
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "5000"
+    depends_on:
+      mlflow-postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - lichess-net
+
+  mlflow-postgres:
+    image: postgres:16-alpine
+    container_name: lichess-mlflow-postgres
+    profiles: [ml]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    volumes:
+      - mlflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lichess-net
+
+volumes:
+  mlflow_postgres_data: {}

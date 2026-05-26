@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
-from libs.shared import load_config
+import chess.pgn
+from compression import zstd
+
+from libs.shared import get_artifact_path, load_config
 
 from lichess_data.extract import lichess_downloader as ld
+from lichess_data.extract.parquet_stream_writer import ParquetStreamWriter
+from lichess_data.extract.pgn_parser import PGNParser
+from lichess_data.preprocessing.pipeline import run_pipeline
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -59,13 +66,68 @@ def main(argv: list[str] | None = None) -> int:
         help=f"Override Lichess database base URL (default: {ld.DEFAULT_BASE_URL})",
     )
 
+    pp = sub.add_parser(
+        "preprocess",
+        help="Transform raw Parquet into model-ready train/test splits",
+    )
+    pp.add_argument("path", type=Path, help="Path to raw .parquet file")
+    pp.add_argument(
+        "--test-size",
+        type=float,
+        default=0.2,
+        help="Fraction of rows for chronological test split (default: 0.2)",
+    )
+    pp.add_argument(
+        "--save-dir",
+        type=Path,
+        default=None,
+        help="Directory for train.parquet and test.parquet (optional)",
+    )
+
+    ex = sub.add_parser(
+        "extract",
+        help="Convert a monthly .pgn.zst shard to Parquet",
+    )
+    ex.add_argument(
+        "input",
+        type=Path,
+        help="Path to input .pgn.zst file",
+    )
+    ex.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output .parquet path (default: derived from input under artifacts/)",
+    )
+    ex.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Games per Parquet write batch (default: from config)",
+    )
+
     args = parser.parse_args(argv)
     cfg = load_config("lichess_data")
 
     if args.cmd == "download":
         return _cmd_download(args, cfg)
 
+    if args.cmd == "preprocess":
+        return _cmd_preprocess(args)
+
+    if args.cmd == "extract":
+        return _cmd_extract(args, cfg)
+
     return 2
+
+
+def _cmd_preprocess(args: argparse.Namespace) -> int:
+    run_pipeline(
+        path=args.path,
+        test_size=args.test_size,
+        save_dir=args.save_dir,
+    )
+    return 0
 
 
 def _cmd_download(args: argparse.Namespace, cfg: dict) -> int:
@@ -104,3 +166,63 @@ def _cmd_download(args: argparse.Namespace, cfg: dict) -> int:
 
     print(path.resolve())
     return 0
+
+
+def _month_from_shard_name(filename: str) -> str | None:
+    match = re.search(r"(\d{4}-\d{2})", filename)
+    return match.group(1) if match else None
+
+
+def _resolve_extract_output(input_path: Path, cfg: dict) -> Path:
+    extract_cfg = cfg.get("extract") or {}
+    subpath = extract_cfg.get("output_subpath", "processed")
+    base = get_artifact_path("lichess_data", subpath, create=True)
+
+    if base.suffix == ".parquet":
+        return base
+
+    month = _month_from_shard_name(input_path.name)
+    name = f"{month}.parquet" if month else f"{input_path.stem}.parquet"
+    return base / name
+
+
+def _cmd_extract(args: argparse.Namespace, cfg: dict) -> int:
+    extract_cfg = cfg.get("extract") or {}
+    batch_size = (
+        args.batch_size
+        if args.batch_size is not None
+        else int(extract_cfg.get("batch_size", 5000))
+    )
+
+    input_path = args.input.resolve()
+    if not input_path.is_file():
+        print(f"error: input file not found: {input_path}", flush=True)
+        return 2
+
+    output_path = (
+        args.output.resolve()
+        if args.output is not None
+        else _resolve_extract_output(input_path, cfg)
+    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    run_extraction(str(input_path), str(output_path), batch_size)
+    print(output_path)
+    return 0
+
+
+def run_extraction(input_path: str, output_path: str, batch_size: int) -> None:
+    pgn_parser = PGNParser()
+
+    with (
+        zstd.open(input_path, "rt", encoding="utf-8") as f,
+        ParquetStreamWriter(output_path, batch_size) as writer,
+    ):
+        while True:
+            game = chess.pgn.read_game(f)
+            if game is None:
+                break
+            writer.add(pgn_parser.parse(game))
+
+    print(f"Done. Games processed: {writer.total:,}")
+    print(f"Saved to: {output_path}")

@@ -1,0 +1,169 @@
+# Legacy Feast 0.11.x demo stack (optional profile `feast`).
+# Prefer modern Feast OSS CLI for greenfield setups.
+
+services:
+  feast-postgres:
+    image: postgres:12-alpine
+    container_name: lichess-feast-postgres
+    profiles: [feast]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-feast}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-feast}
+      POSTGRES_DB: ${POSTGRES_DB:-feast}
+    volumes:
+      - feast_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-feast}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lichess-net
+
+  feast-redis:
+    image: redis:6.2-alpine
+    container_name: lichess-feast-redis
+    profiles: [feast]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lichess-net
+
+  feast-zookeeper:
+    image: confluentinc/cp-zookeeper:6.2.13
+    container_name: lichess-feast-zookeeper
+    profiles: [feast]
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - lichess-net
+
+  feast-kafka:
+    image: confluentinc/cp-kafka:6.2.13
+    container_name: lichess-feast-kafka
+    profiles: [feast]
+    restart: unless-stopped
+    depends_on:
+      feast-zookeeper:
+        condition: service_started
+    ports:
+      - "9094:9094"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: feast-zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://feast-kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - lichess-net
+
+  feast-core:
+    image: feastdev/feast-core:${FEAST_VERSION:-0.11.1}
+    container_name: lichess-feast-core
+    profiles: [feast]
+    restart: unless-stopped
+    depends_on:
+      feast-postgres:
+        condition: service_healthy
+      feast-kafka:
+        condition: service_started
+    ports:
+      - "6565:6565"
+    environment:
+      DB_HOST: feast-postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-feast}
+      DB_USERNAME: ${POSTGRES_USER:-feast}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-feast}
+      FEAST_CORE_STORE_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: feast-kafka:9092
+      GOOGLE_APPLICATION_CREDENTIALS: /etc/gcp/service-account.json
+    volumes:
+      - ${GCP_SERVICE_ACCOUNT:-/dev/null}:/etc/gcp/service-account.json:ro
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:6565"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - lichess-net
+
+  feast-serving:
+    image: feastdev/feast-serving:${FEAST_VERSION:-0.11.1}
+    container_name: lichess-feast-serving
+    profiles: [feast]
+    restart: unless-stopped
+    depends_on:
+      feast-core:
+        condition: service_healthy
+      feast-redis:
+        condition: service_healthy
+    ports:
+      - "6566:6566"
+    environment:
+      FEAST_CORE_URL: feast-core:6565
+      STORE_TYPE: REDIS
+      STORE_REDIS_HOST: feast-redis
+      STORE_REDIS_PORT: 6379
+      GOOGLE_APPLICATION_CREDENTIALS: /etc/gcp/service-account.json
+    volumes:
+      - ${GCP_SERVICE_ACCOUNT:-/dev/null}:/etc/gcp/service-account.json:ro
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:6566"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - lichess-net
+
+  feast-jobservice:
+    image: feastdev/feast-jobservice:${FEAST_VERSION:-0.11.1}
+    container_name: lichess-feast-jobservice
+    profiles: [feast]
+    restart: unless-stopped
+    depends_on:
+      feast-core:
+        condition: service_healthy
+    environment:
+      FEAST_CORE_URL: feast-core:6565
+      KAFKA_BOOTSTRAP_SERVERS: feast-kafka:9092
+      GOOGLE_APPLICATION_CREDENTIALS: /etc/gcp/service-account.json
+    volumes:
+      - ${GCP_SERVICE_ACCOUNT:-/dev/null}:/etc/gcp/service-account.json:ro
+    networks:
+      - lichess-net
+
+  feast-jupyter:
+    image: feastdev/feast-jupyter:${FEAST_VERSION:-0.11.1}
+    container_name: lichess-feast-jupyter
+    profiles: [feast]
+    restart: unless-stopped
+    depends_on:
+      feast-core:
+        condition: service_healthy
+      feast-serving:
+        condition: service_healthy
+    ports:
+      - "8888:8888"
+    environment:
+      FEAST_CORE_URL: feast-core:6565
+      FEAST_SERVING_URL: feast-serving:6566
+      GOOGLE_APPLICATION_CREDENTIALS: /etc/gcp/service-account.json
+    volumes:
+      - ${GCP_SERVICE_ACCOUNT:-/dev/null}:/etc/gcp/service-account.json:ro
+    networks:
+      - lichess-net
+
+volumes:
+  feast_postgres_data: {}

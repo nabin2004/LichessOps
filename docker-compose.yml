@@ -1,0 +1,19 @@
+# Unified Lichess MLOps stack (Compose project name `lichess`).
+#
+# Typical usage:
+#   docker compose --profile core --profile ml up -d
+# See services/README.md for profiles and ports.
+
+name: lichess
+
+include:
+  - path: ./services/compose/networks.yml
+  - path: ./services/minio/docker-compose.yml
+  - path: ./services/mlflow/docker-compose.yml
+  - path: ./services/prometheus/docker-compose.yml
+  - path: ./services/spark/docker-compose.yml
+  - path: ./services/airflow/docker-compose.yaml
+  - path: ./services/feast/docker-compose.yml
+  - path: ./services/evidently/docker-compose.yml
+  - path: ./services/great_expec/docker-compose.yml
+  - path: ./services/duckdb/docker-compose.yml
