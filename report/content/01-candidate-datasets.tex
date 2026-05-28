@@ -35,90 +35,92 @@ The fixed flat-file schema suits classic tabular baselines rather than transacti
 \section{Chosen dataset and justification}
 \label{sec:chosen-dataset}
 
-We select the Lichess open database for MLOps development due to its sheer volume, scale, embedded labels, \textsc{cc}0 licensing, and monthly refresh.  Lichess dataset clearly outweighes the simpler study purpose datasets like Wine Quality and Boston housing baselines (\cref{sec:dataset-two,sec:dataset-three,fig:step1-candidate-matrix}). Additionally, Lichess Data is produced from a live platform with a large user base, so it has a real-world provenance and operational profile that suits and provides ample direction for learning opportunity in MLOps pipeline design and Data Management. Following are table summarising the operational profile of the Lichess dataset which further supports this selection choice (\cref{tab:lichess-operational-profile,tab:lichess-ml-features}).
+We select the Lichess open database for MLOps development due to its sheer volume, scale, embedded labels, \textsc{cc}0 licensing, and monthly refresh.  Lichess dataset clearly outweighes the simpler study purpose datasets like Wine Quality and Boston housing baselines (\cref{sec:dataset-two,sec:dataset-three,fig:step1-candidate-matrix}). Additionally, Lichess Data is produced from a live platform with a large user base, so it has a real-world provenance and operational profile that suits and provides ample direction for learning opportunity in MLOps pipeline design and Data Management. 
+
+% Following are table summarising the operational profile of the Lichess dataset which further supports this selection choice (\cref{tab:lichess-operational-profile,tab:lichess-ml-features}).
 
 
-\begin{table}[htbp]
-  \centering
-  \caption{Operational profile of the selected Lichess corpus.}
-  \label{tab:lichess-operational-profile}
-  \small
-  \setlength{\tabcolsep}{4pt}
-  \renewcommand{\arraystretch}{1.15}
-  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.21\linewidth}
-                  >{\raggedright\arraybackslash}p{0.73\linewidth}@{}}
-    \toprule
-    Dimension & Assessment\\
-    \midrule
-    Volume and velocity &
-      Approximately \(7.68\times10^{9}\) rated games in \(\sim\)2.43\,TB of Zstandard-compressed PGN (\cref{app:lichess-open-database}).
-      Non-cumulative monthly dumps add on the order of \(5\times10^{7}\)--\(10^{8}\) games per month.\\
-    Schema complexity &
-      No fixed relational schema
-      Movetext is encoded in SAN, requiring parse or tokenisation pipelines.
-      Field inventories evolve gradually---newer months introduce headers such as \texttt{[Accuracy]} or \texttt{[Termination]} absent from early releases.\\
-    Data quality and sparsity &
-      Mix of elite (\(\geq 2500\) Elo) and casual pairings; optional tags may be absent (\texttt{[Opening]} unset for off-book positions).
-      Outcome priors are tempo-dependent: draws account for \(<2\%\) of bullet (\texttt{1+0}) games but approach \(10\)--\(15\%\) under classical controls.
-      Rating-delta targets are noisy when provisional ratings apply to new accounts.\\
-    Temporal and causal structure &
-      UTC timestamps support chronological splits and back-testing; monthly partitions suit incremental ingestion.
-      Player-level correlation violates independence for rating-change targets---splits should respect time or player identifiers, not naive random shuffling.\\
-    Operational limitation &
-      Bulk exports are post hoc monthly artefacts, not a live stream.
-      Near-real-time inference would require a complementary WebSocket feed in addition to the open-database cadence.\\
-    \bottomrule
-  \end{tabular}
-\end{table}
+% \begin{table}[htbp]
+%   \centering
+%   \caption{Operational profile of the selected Lichess corpus.}
+%   \label{tab:lichess-operational-profile}
+%   \small
+%   \setlength{\tabcolsep}{4pt}
+%   \renewcommand{\arraystretch}{1.15}
+%   \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.21\linewidth}
+%                   >{\raggedright\arraybackslash}p{0.73\linewidth}@{}}
+%     \toprule
+%     Dimension & Assessment\\
+%     \midrule
+%     Volume and velocity &
+%       Approximately \(7.68\times10^{9}\) rated games in \(\sim\)2.43\,TB of Zstandard-compressed PGN (\cref{app:lichess-open-database}).
+%       Non-cumulative monthly dumps add on the order of \(5\times10^{7}\)--\(10^{8}\) games per month.\\
+%     Schema complexity &
+%       No fixed relational schema
+%       Movetext is encoded in SAN, requiring parse or tokenisation pipelines.
+%       Field inventories evolve gradually---newer months introduce headers such as \texttt{[Accuracy]} or \texttt{[Termination]} absent from early releases.\\
+%     Data quality and sparsity &
+%       Mix of elite (\(\geq 2500\) Elo) and casual pairings; optional tags may be absent (\texttt{[Opening]} unset for off-book positions).
+%       Outcome priors are tempo-dependent: draws account for \(<2\%\) of bullet (\texttt{1+0}) games but approach \(10\)--\(15\%\) under classical controls.
+%       Rating-delta targets are noisy when provisional ratings apply to new accounts.\\
+%     Temporal and causal structure &
+%       UTC timestamps support chronological splits and back-testing; monthly partitions suit incremental ingestion.
+%       Player-level correlation violates independence for rating-change targets---splits should respect time or player identifiers, not naive random shuffling.\\
+%     Operational limitation &
+%       Bulk exports are post hoc monthly artefacts, not a live stream.
+%       Near-real-time inference would require a complementary WebSocket feed in addition to the open-database cadence.\\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}
 
 \subsection{Supervised modelling}
 \label{sec:supervised-modelling}
 
 The primary supervised task is \emph{pre-game outcome prediction}: given features available before the first move (ratings, time control, variant), estimate whether White wins, Black wins, or the game is drawn, a three-class classification problem with ground truth in \texttt{[Result]} (\texttt{1-0}, \texttt{0-1}, \texttt{1/2-1/2}).
-\Cref{tab:lichess-ml-features} maps labels, baseline predictors, PGN sources, and modelling caveats.
+% \Cref{tab:lichess-ml-features} maps labels, baseline predictors, PGN sources, and modelling caveats.
 
-\begin{table}[htbp]
-  \centering
-  \caption{Machine learning features and labels derivable from the Lichess dataset.}
-  \label{tab:lichess-ml-features}
-  \footnotesize
-  \setlength{\tabcolsep}{3.5pt}
-  \renewcommand{\arraystretch}{1.12}
-  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.13\linewidth}
-                  >{\raggedright\arraybackslash}p{0.27\linewidth}
-                  >{\raggedright\arraybackslash}p{0.28\linewidth}
-                  >{\raggedright\arraybackslash}p{0.26\linewidth}@{}}
-    \toprule
-    Role & ML construct & Principal sources & Ground truth / caveats\\
-    \midrule
-    Label &
-      Game outcome (White win\,/\,draw\,/\,Black win). &
-      \texttt{[Result]} (\texttt{1-0}, \texttt{1/2-1/2}, \texttt{0-1}). &
-      Terminal result on record is the supervised ground truth; validate parsing across shards; expect tempo-dependent class skew.\\
-    Feature &
-      Relative strength / pairing imbalance. &
-      \texttt{[WhiteElo]}, \texttt{[BlackElo]}, derived rating gap (and titles if headers include them). &
-      Ratings proxy skill but drift over months; handle missing or placeholder (\texttt{?}) values for unrated or anonymous games.\\
-    Feature &
-      Clock format / tempo regime. &
-      \texttt{[TimeControl]}; chess variant headers when analysing non-standard rulesets. &
-      Strong behavioural prior; bucket bullet\,/\,blitz\,/\,rapid\,/\,classical during preprocessing for stability.\\
-    Feature &
-      Opening / early trajectory signal. &
-      First \(N\) half-moves from the SAN movelist; optional \texttt{[ECO]} when present in headers. &
-      Very high cardinality; employ hashing, embeddings, or clustering; beware transpositions if enriching from external opening tables.\\
-    Feature &
-      Length / pace proxies. &
-      Ply count from SAN tokens; optional \texttt{\%clk} timestamps alongside \texttt{[UTCDate]} / \texttt{[UTCTime]} comments when exported. &
-      Signals complexity or time trouble; clock commentary is shard-dependent---treat as optional enrichment, not assumed globally.\\
-    Feature &
-      Termination channel. &
-      \texttt{[Termination]} when present (mate, resignation, timeout, etc.). &
-      Post-game metadata; exclude from pre-game predictors or treat as diagnostic only---often correlated with outcome.\\
-    Feature &
-      Position-derived telemetry (advanced). &
-      Parsed positions (material balance, mobility); optional engine evaluations via offline joins. &
-      Highest fidelity but requires full SAN parsing or auxiliary computation; heavier engineering than header-only baselines.\\
-    \bottomrule
-  \end{tabular}
-\end{table}
+% \begin{table}[htbp]
+%   \centering
+%   \caption{Machine learning features and labels derivable from the Lichess dataset.}
+%   \label{tab:lichess-ml-features}
+%   \footnotesize
+%   \setlength{\tabcolsep}{3.5pt}
+%   \renewcommand{\arraystretch}{1.12}
+%   \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.13\linewidth}
+%                   >{\raggedright\arraybackslash}p{0.27\linewidth}
+%                   >{\raggedright\arraybackslash}p{0.28\linewidth}
+%                   >{\raggedright\arraybackslash}p{0.26\linewidth}@{}}
+%     \toprule
+%     Role & ML construct & Principal sources & Ground truth / caveats\\
+%     \midrule
+%     Label &
+%       Game outcome (White win\,/\,draw\,/\,Black win). &
+%       \texttt{[Result]} (\texttt{1-0}, \texttt{1/2-1/2}, \texttt{0-1}). &
+%       Terminal result on record is the supervised ground truth; validate parsing across shards; expect tempo-dependent class skew.\\
+%     Feature &
+%       Relative strength / pairing imbalance. &
+%       \texttt{[WhiteElo]}, \texttt{[BlackElo]}, derived rating gap (and titles if headers include them). &
+%       Ratings proxy skill but drift over months; handle missing or placeholder (\texttt{?}) values for unrated or anonymous games.\\
+%     Feature &
+%       Clock format / tempo regime. &
+%       \texttt{[TimeControl]}; chess variant headers when analysing non-standard rulesets. &
+%       Strong behavioural prior; bucket bullet\,/\,blitz\,/\,rapid\,/\,classical during preprocessing for stability.\\
+%     Feature &
+%       Opening / early trajectory signal. &
+%       First \(N\) half-moves from the SAN movelist; optional \texttt{[ECO]} when present in headers. &
+%       Very high cardinality; employ hashing, embeddings, or clustering; beware transpositions if enriching from external opening tables.\\
+%     Feature &
+%       Length / pace proxies. &
+%       Ply count from SAN tokens; optional \texttt{\%clk} timestamps alongside \texttt{[UTCDate]} / \texttt{[UTCTime]} comments when exported. &
+%       Signals complexity or time trouble; clock commentary is shard-dependent---treat as optional enrichment, not assumed globally.\\
+%     Feature &
+%       Termination channel. &
+%       \texttt{[Termination]} when present (mate, resignation, timeout, etc.). &
+%       Post-game metadata; exclude from pre-game predictors or treat as diagnostic only---often correlated with outcome.\\
+%     Feature &
+%       Position-derived telemetry (advanced). &
+%       Parsed positions (material balance, mobility); optional engine evaluations via offline joins. &
+%       Highest fidelity but requires full SAN parsing or auxiliary computation; heavier engineering than header-only baselines.\\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}

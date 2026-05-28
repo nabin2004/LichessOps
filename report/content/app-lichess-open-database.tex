@@ -1,59 +1,59 @@
-\chapter{Lichess Open Database (reference material)}
-\label{app:lichess-open-database}
+% \chapter{Lichess Open Database (reference material)}
+% \label{app:lichess-open-database}
 
-Public specification mirroring \textbf{database.lichess.org} (\cite{lichess_open_database}); later releases supersede aggregate counts without changing file conventions noted below.
+% Public specification mirroring \textbf{database.lichess.org} (\cite{lichess_open_database}); later releases supersede aggregate counts without changing file conventions noted below.
 
-\section{Licence and scope}
+% \section{Licence and scope}
 
-Dedicated to the public domain under Creative Commons \textsc{cc}0~1.0~\cite{cc0_10}.
-\textbf{Standard rated} chess is serialised as \textsc{pgn}; monthly \texttt{.pgn.zst} shards are \emph{non-cumulative}.
-Variants, broadcasts, puzzles, and evaluations are sibling exports on the same catalogue page~\cite{lichess_open_database}.
+% Dedicated to the public domain under Creative Commons \textsc{cc}0~1.0~\cite{cc0_10}.
+% \textbf{Standard rated} chess is serialised as \textsc{pgn}; monthly \texttt{.pgn.zst} shards are \emph{non-cumulative}.
+% Variants, broadcasts, puzzles, and evaluations are sibling exports on the same catalogue page~\cite{lichess_open_database}.
 
-\section{Corpus summary}
+% \section{Corpus summary}
 
-Index snapshot \textbf{21 May 2026}: Monthly rows, checksums, and BitTorrent mirrors live on site which is not reproduced here~\cite{lichess_open_database}.
+% Index snapshot \textbf{21 May 2026}: Monthly rows, checksums, and BitTorrent mirrors live on site which is not reproduced here~\cite{lichess_open_database}.
 
-\begin{table}[htbp]
-  \centering
-  \scriptsize
-  \setlength{\tabcolsep}{4pt}
-  \renewcommand{\arraystretch}{1.05}
-  \caption{Standard-rated Lichess corpus (aggregate; per-month shard list at online index).}%
-  \label{tab:lichess-monthly-inventory}
-  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.38\linewidth} p{0.52\linewidth}@{}}
-    \toprule
-    Field & Value \\
-    \midrule
-    Coverage & \(160\) monthly \texttt{.pgn.zst} files (January~2013--April~2026) \\
-    Aggregate size & \textbf{2.46\,TB} compressed \\
-    Aggregate games & \textbf{\(7{,}772{,}124{,}731\)} \\
-    Live index & \url{https://database.lichess.org/\#standard} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+% \begin{table}[htbp]
+%   \centering
+%   \scriptsize
+%   \setlength{\tabcolsep}{4pt}
+%   \renewcommand{\arraystretch}{1.05}
+%   \caption{Standard-rated Lichess corpus (aggregate; per-month shard list at online index).}%
+%   \label{tab:lichess-monthly-inventory}
+%   \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.38\linewidth} p{0.52\linewidth}@{}}
+%     \toprule
+%     Field & Value \\
+%     \midrule
+%     Coverage & \(160\) monthly \texttt{.pgn.zst} files (January~2013--April~2026) \\
+%     Aggregate size & \textbf{2.46\,TB} compressed \\
+%     Aggregate games & \textbf{\(7{,}772{,}124{,}731\)} \\
+%     Live index & \url{https://database.lichess.org/\#standard} \\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}
 
-\section[Format]{Illustrative \textsc{pgn}}
+% \section[Format]{Illustrative \textsc{pgn}}
 
-Headers plus White-perspective \texttt{\%eval} and \texttt{\%clk} comments (abridged movetext):
+% Headers plus White-perspective \texttt{\%eval} and \texttt{\%clk} comments (abridged movetext):
 
-\begin{lstlisting}[language=PGN,label={lst:lichess-pgn-sample}, basicstyle=\ttfamily\scriptsize, columns=fullflexible, keepspaces=true, frame=single, framerule=0.3pt, xleftmargin=0.45em, aboveskip=0.35em, belowskip=0.35em]
-[White "Abbot"][Black "Costello"][Result "0-1"][UTCDate "2017.04.01"][UTCTime "11:32:01"]
-[WhiteElo "2100"][BlackElo "2000"][TimeControl "300+0"][Termination "Time forfeit"]
-1. e4 { [%eval 0.17] [%clk 0:00:30] } 1... c5 { [%eval 0.19] [%clk 0:00:30] }
-2. Nf3 { [%eval 0.25] [%clk 0:00:29] } 2... Nc6 { [%eval 0.33] [%clk 0:00:30] } ...
-\end{lstlisting}
+% \begin{lstlisting}[language=PGN,label={lst:lichess-pgn-sample}, basicstyle=\ttfamily\scriptsize, columns=fullflexible, keepspaces=true, frame=single, framerule=0.3pt, xleftmargin=0.45em, aboveskip=0.35em, belowskip=0.35em]
+% [White "Abbot"][Black "Costello"][Result "0-1"][UTCDate "2017.04.01"][UTCTime "11:32:01"]
+% [WhiteElo "2100"][BlackElo "2000"][TimeControl "300+0"][Termination "Time forfeit"]
+% 1. e4 { [%eval 0.17] [%clk 0:00:30] } 1... c5 { [%eval 0.19] [%clk 0:00:30] }
+% 2. Nf3 { [%eval 0.25] [%clk 0:00:29] } 2... Nc6 { [%eval 0.33] [%clk 0:00:30] } ...
+% \end{lstlisting}
 
-\section{Ingestion notes and caveats}
+% \section{Ingestion notes and caveats}
 
-{\scriptsize
-\begin{itemize}[leftmargin=1em]
-  \item \(\sim\)6\% of games embed Stockfish analysis (\texttt{\%eval} centipawn lines, mate-distance markers); \texttt{WhiteElo}/\texttt{BlackElo} are Glicko-2; \texttt{\%clk} from April~2017 (\texttt{\%clkc} centiseconds on older shards); Bot \textsc{api} games may carry \texttt{[WhiteTitle "BOT"]}/\texttt{[BlackTitle "BOT"]}; \texttt{Variant} tags mark non-standard rules.
-  \item Decompress with \texttt{zstd}/\texttt{pzstd}; uncompressed text \(\sim\)7.1\(\times\) \texttt{.zst}; streaming (\texttt{zstdcat} \(\to\) parsers) avoids full-disk expansion; very large files suit programmatic parsers (\texttt{python-chess}, Scoutfish) over desktop database tools alone.
-\end{itemize}
+% {\scriptsize
+% \begin{itemize}[leftmargin=1em]
+%   \item \(\sim\)6\% of games embed Stockfish analysis (\texttt{\%eval} centipawn lines, mate-distance markers); \texttt{WhiteElo}/\texttt{BlackElo} are Glicko-2; \texttt{\%clk} from April~2017 (\texttt{\%clkc} centiseconds on older shards); Bot \textsc{api} games may carry \texttt{[WhiteTitle "BOT"]}/\texttt{[BlackTitle "BOT"]}; \texttt{Variant} tags mark non-standard rules.
+%   \item Decompress with \texttt{zstd}/\texttt{pzstd}; uncompressed text \(\sim\)7.1\(\times\) \texttt{.zst}; streaming (\texttt{zstdcat} \(\to\) parsers) avoids full-disk expansion; very large files suit programmatic parsers (\texttt{python-chess}, Scoutfish) over desktop database tools alone.
+% \end{itemize}
 
-\noindent\textbf{Published quality regressions }(era-dependent; summarise when modelling):
-\begin{itemize}[leftmargin=1em]
-  \item \textbf{2023--}: Chess960 rematches sometimes invalid castling \textsc{fen}; Antichess rating mix-ups (Dec~2022).
-  \item \textbf{2020--2021}: Mar~2021 result-tag errors (outage); Feb~2021 resignations/move lists past terminal variants; variant \textsc{nnue} mis-settings (Dec~2020--Jan~2021); Jul--Aug~2020 poor variant opening evals (\(\approx\)July peak); sporadic rated self-play (Jun~2020; pre-Mar~2016).
-  \item \textbf{\(\leq\)Dec~2020}: Sparse headers (\texttt{Round}, \texttt{Date}); Dec~2016 eval corruption peak; mates before 2016 not guaranteed true; \(\leq\)Aug~2016 seven illegal castle games.
-\end{itemize}}
+% \noindent\textbf{Published quality regressions }(era-dependent; summarise when modelling):
+% \begin{itemize}[leftmargin=1em]
+%   \item \textbf{2023--}: Chess960 rematches sometimes invalid castling \textsc{fen}; Antichess rating mix-ups (Dec~2022).
+%   \item \textbf{2020--2021}: Mar~2021 result-tag errors (outage); Feb~2021 resignations/move lists past terminal variants; variant \textsc{nnue} mis-settings (Dec~2020--Jan~2021); Jul--Aug~2020 poor variant opening evals (\(\approx\)July peak); sporadic rated self-play (Jun~2020; pre-Mar~2016).
+%   \item \textbf{\(\leq\)Dec~2020}: Sparse headers (\texttt{Round}, \texttt{Date}); Dec~2016 eval corruption peak; mates before 2016 not guaranteed true; \(\leq\)Aug~2016 seven illegal castle games.
+% \end{itemize}}

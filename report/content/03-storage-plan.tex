@@ -36,21 +36,19 @@ The cardinality is one game to zero-or-many moves.
 
 \section{Ingested Data Storage}
 \label{ingested_data_storage}
-After extraction and loading, the raw \texttt{.zst} object is transformed into a set of Parquet tables arranged in a star schema. I follow an ELT pattern: the compressed file lands unchanged in MinIO first (load), then Apache Spark reads from object storage to parse and shape the data (transform), and the curated tables are written to MinIO as Parquet and loaded into DuckDB for analytics.
+After extraction and loading, the raw \texttt{.zst} object is transformed into a set of Parquet tables arranged in a star schema. I follow an ELT pattern: the compressed file lands unchanged in MinIO first (load), then Apache Spark reads from object storage to parse and shape the data (transform), and the curated tables are written to MinIO as Parquet and loaded into DuckDB for analytics. Parquet file format has been chosen due to it fast aggregations for columnar database. It also provides features like high compression and predicate push-down with Spark/DuckDB. MinIO has been choosen for object storage due to its S3 compatible format which provides the flexibility to move to production grade object stores like Amazon S3. 
 
+% \subsection{Why Parquet?}
+% \begin{itemize}
+%     \item Fast aggregations (scans only the columns needed).
+%     \item High compression (columns hold similar data).
+%     \item Predicate push-down with Spark/DuckDB (partition pruning on year/month).
+% \end{itemize}
 
-\subsection{Why Parquet?}
-\begin{itemize}
-    \item Fast aggregations (scans only the columns needed).
-    \item High compression (columns hold similar data).
-    \item Predicate push-down with Spark/DuckDB (partition pruning on year/month).
-\end{itemize}
-
-\subsection{Why MinIO?}
-It keeps compute and storage separate, allows direct S3-compatible reads from Spark, DuckDB, and Feast, and the raw bucket gives a permanent, immutable copy for reprocessing.
+% \subsection{Why MinIO?}
 
 \subsection{Logical structure (Star Schema)}
-The processed data is modelled as a star schema centred on \texttt{fact\_games}. The design is shown in \cref{fig:dataset-one-logical-erd} as a crow-foot ERD.
+At this stage of data ingestion, processed data is modelled as a star schema centred on \texttt{games}. The design is shown in \cref{fig:dataset-one-logical-erd} as a crow-foot ERD. Justification for the star schema is given in depth in section \ref{sec:justi_star_schema}
 
 \begin{figure}[htbp]
   \centering
@@ -62,6 +60,7 @@ The processed data is modelled as a star schema centred on \texttt{fact\_games}.
 
 
 \subsection{Justification for the star schema}
+\label{sec:justi_star_schema}
 The star schema was chosen because it directly supports the two main consumer groups in the pipeline:
 
 
@@ -79,8 +78,8 @@ The star schema was chosen because it directly supports the two main consumer gr
     \end{tabular}
 \end{table}
 
-\section{Benefits, drawbacks and Mitigation of the star schema}
-The star schema model is straightforward to communicate to both engineers and data scientists because breaking the dataset into games, players, openings, and dates maps naturally to the chess domain. By using this approach, we avoid the massive data duplication that typically plagues a single, wide table. This structure also perfectly complements the write-once, read-many nature of historical chess data. While queries requiring multiple dimensions do need joins, the dimensions are relatively small, and engines like DuckDB or Spark manage these columnar joins quite efficiently. We accepted a minor bit of redundancy, such as storing the \texttt{last\_known\_elo} directly in the \texttt{dim\_player} table instead of constantly recalculating it from the fact table, simply because it makes looking up current ratings significantly faster. Finally, although evolving the schema—like adding a brand new dimension—demands careful coordination, using Parquet makes this manageable by supporting schema merging and allowing new dimensions to be introduced independently over time.
+% \section{Benefits, drawbacks and Mitigation of the star schema}
+% The star schema model is straightforward to communicate to both engineers and data scientists because breaking the dataset into games, players, openings, and dates maps naturally to the chess domain. By using this approach, we avoid the massive data duplication that typically plagues a single, wide table. This structure also perfectly complements the write-once, read-many nature of historical chess data. While queries requiring multiple dimensions do need joins, the dimensions are relatively small, and engines like DuckDB or Spark manage these columnar joins quite efficiently. We accepted a minor bit of redundancy, such as storing the \texttt{last\_known\_elo} directly in the \texttt{dim\_player} table instead of constantly recalculating it from the fact table, simply because it makes looking up current ratings significantly faster. Finally, although evolving the schema—like adding a brand new dimension—demands careful coordination, using Parquet makes this manageable by supporting schema merging and allowing new dimensions to be introduced independently over time.
 
 \section{Alternative structure}
 \begin{table}[htp!]
