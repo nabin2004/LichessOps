@@ -127,7 +127,7 @@ Airflow typically runs something equivalent to:
 PYTHONPATH=<repo_root> uv run lichess-data download --previous-month
 ```
 
-Bake the same **workspace root** and **Python environment** into the worker image, or install `lichess-data` and ensure `libs` is importable (today the repo assumes `PYTHONPATH` includes the workspace root). MinIO or other object stores are **out of scope** for this module; upload is a separate load step.
+Bake the same **workspace root** and **Python environment** into the worker image, or install `lichess-data` and ensure `libs` is importable (today the repo assumes `PYTHONPATH` includes the workspace root). After download, the ELT pipeline uploads the shard with `lichess-data upload` — see [Object storage and DuckDB](./object-storage-and-duckdb.md).
 
 ---
 

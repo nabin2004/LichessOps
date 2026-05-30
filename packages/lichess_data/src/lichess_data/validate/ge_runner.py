@@ -71,7 +71,10 @@ def validate_ge_processed_parquet(
     *,
     config: dict[str, Any] | None = None,
 ) -> GEValidationResult:
-    """Validate a processed parquet file using Great Expectations."""
+    """Validate a processed parquet file using Great Expectations.
+
+    Accepts both legacy extract output and ``wide_games`` exports from DuckDB sync.
+    """
     del config
     parquet_path = Path(path).expanduser().resolve()
     if not parquet_path.exists():

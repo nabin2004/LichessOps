@@ -15,7 +15,10 @@ from libs.shared import get_artifact_path, load_config
 from lichess_data.extract import lichess_downloader as ld
 from lichess_data.extract.parquet_stream_writer import ParquetStreamWriter
 from lichess_data.extract.pgn_parser import PGNParser
+from lichess_data.load.duckdb_sync import sync_month
+from lichess_data.load.upload import upload_raw_shard
 from lichess_data.preprocessing.pipeline import run_pipeline
+from lichess_data.spark.run import run_transform
 from lichess_data.validate import (
     validate_checksum_result,
     validate_ge_features_parquet,
@@ -163,6 +166,37 @@ def main(argv: list[str] | None = None) -> int:
         help="Exit non-zero when validation fails",
     )
 
+    upl = sub.add_parser("upload", help="Upload raw shard to MinIO (no-op when backend=local)")
+    upl_g = upl.add_mutually_exclusive_group(required=False)
+    upl_g.add_argument("--month", metavar="YYYY-MM")
+    upl_g.add_argument("--previous-month", action="store_true")
+
+    st = sub.add_parser(
+        "spark-transform",
+        help="Transform raw shard to star-schema Parquet (local engine or Spark cluster)",
+    )
+    st_g = st.add_mutually_exclusive_group(required=False)
+    st_g.add_argument("--month", metavar="YYYY-MM")
+    st_g.add_argument("--previous-month", action="store_true")
+    st.add_argument(
+        "--local",
+        action="store_true",
+        help="Write star-schema files under local artifacts only (no MinIO upload)",
+    )
+    st.add_argument(
+        "--spark-cluster",
+        action="store_true",
+        help="Submit to Spark cluster before writing outputs",
+    )
+
+    dbs = sub.add_parser(
+        "duckdb-sync",
+        help="Load processed Parquet into DuckDB and export wide games for preprocess",
+    )
+    dbs_g = dbs.add_mutually_exclusive_group(required=False)
+    dbs_g.add_argument("--month", metavar="YYYY-MM")
+    dbs_g.add_argument("--previous-month", action="store_true")
+
     args = parser.parse_args(argv)
     cfg = load_config("lichess_data")
 
@@ -180,6 +214,15 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "validate-ge":
         return _cmd_validate_ge(args, cfg)
+
+    if args.cmd == "upload":
+        return _cmd_upload(args, cfg)
+
+    if args.cmd == "spark-transform":
+        return _cmd_spark_transform(args, cfg)
+
+    if args.cmd == "duckdb-sync":
+        return _cmd_duckdb_sync(args, cfg)
 
     return 2
 
@@ -394,6 +437,45 @@ def _cmd_validate_ge(args: argparse.Namespace, cfg: dict) -> int:
 
     if failures and args.strict:
         return 1
+    return 0
+
+
+def _cmd_upload(args: argparse.Namespace, cfg: dict) -> int:
+    month = _resolve_month(args)
+    if month is None:
+        print("error: specify --month YYYY-MM or --previous-month", flush=True)
+        return 2
+    uri = upload_raw_shard(month, config=cfg)
+    if uri:
+        print(uri, flush=True)
+    else:
+        print(f"upload skipped (local backend) for {month}", flush=True)
+    return 0
+
+
+def _cmd_spark_transform(args: argparse.Namespace, cfg: dict) -> int:
+    month = _resolve_month(args)
+    if month is None:
+        print("error: specify --month YYYY-MM or --previous-month", flush=True)
+        return 2
+    outputs = run_transform(
+        month,
+        config=cfg,
+        local=args.local,
+        use_spark_cluster=args.spark_cluster,
+    )
+    for name, path in outputs.items():
+        print(f"{name}\t{path}", flush=True)
+    return 0
+
+
+def _cmd_duckdb_sync(args: argparse.Namespace, cfg: dict) -> int:
+    month = _resolve_month(args)
+    if month is None:
+        print("error: specify --month YYYY-MM or --previous-month", flush=True)
+        return 2
+    out_path = sync_month(month, config=cfg)
+    print(out_path, flush=True)
     return 0
 
 

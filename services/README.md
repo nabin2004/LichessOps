@@ -47,9 +47,39 @@ docker compose --profile orchestration up -d
 docker compose --profile core --profile pipeline up -d
 ```
 
+## ELT quickstart (MinIO + DuckDB)
+
+Full object-store pipeline from the host (see [docs/object-storage-and-duckdb.md](../docs/object-storage-and-duckdb.md)):
+
+```bash
+# Object store + optional Spark cluster
+docker compose --profile core --profile pipeline up -d
+
+# Monthly shard through ELT (example month)
+export AWS_ENDPOINT_URL=http://localhost:9000
+export LICHESS_STORAGE_BACKEND=minio
+uv run lichess-data download --month 2013-01
+uv run lichess-data upload --month 2013-01
+uv run lichess-data spark-transform --month 2013-01
+uv run lichess-data duckdb-sync --month 2013-01
+
+# Inspect DuckDB catalog
+docker compose --profile tools run --rm duckdb \
+  artifacts/lichess_data/duckdb/lichess.duckdb
+```
+
+Spark submit example (cluster mode):
+
+```bash
+docker compose --profile core --profile pipeline run --rm spark-submit \
+  --master spark://spark:7077 \
+  /workspace/packages/lichess_data/src/lichess_data/spark/job.py \
+  --month 2013-01 --input /workspace/artifacts/lichess_data/raw/pgn/lichess_db_standard_rated_2013-01.pgn.zst --local
+```
+
 ## Airflow ingestion DAGs
 
-DAGs live under [services/airflow/dags](airflow/dags). The `lichess_monthly_ingestion` DAG runs the full `lichess_data` ingestion chain (download -> extract -> preprocess -> validate).
+DAGs live under [services/airflow/dags](airflow/dags). The `lichess_monthly_ingestion` DAG runs download → ELT (upload, spark-transform, duckdb-sync) or legacy extract → preprocess → Feast split → validate → train.
 
 Recommended environment variables (set in `services/airflow/.env` or a root `.env`):
 

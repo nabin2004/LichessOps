@@ -56,9 +56,15 @@ def _get_params() -> dict:
     return context.get("params", {})
 
 
+def _use_elt(params: dict) -> bool:
+    if "use_elt" in params:
+        return bool(params.get("use_elt"))
+    return os.environ.get("LICHESS_STORAGE_BACKEND", "minio").strip().lower() == "minio"
+
+
 @dag(
     dag_id="lichess_monthly_ingestion",
-    description="Monthly download -> extract -> preprocess -> feast split -> validate -> train for lichess_data.",
+    description="Monthly Lichess ingestion: ELT (MinIO/Spark/DuckDB) or local extract path.",
     schedule="0 3 1 * *",
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -71,6 +77,7 @@ def _get_params() -> dict:
         "test_size": 0.2,
         "run_validation": True,
         "run_training": True,
+        "use_elt": True,
     },
 )
 def lichess_monthly_ingestion():
@@ -91,8 +98,41 @@ def lichess_monthly_ingestion():
         _run_cmd(cmd)
 
     @task.python
+    def upload_raw() -> None:
+        params = _get_params()
+        if not _use_elt(params):
+            print("ELT disabled; skipping upload", flush=True)
+            return
+        month = (params.get("month") or "").strip() or None
+        cmd = _build_data_cmd("upload", month)
+        _run_cmd(cmd)
+
+    @task.python
+    def spark_transform() -> None:
+        params = _get_params()
+        if not _use_elt(params):
+            print("ELT disabled; skipping spark-transform", flush=True)
+            return
+        month = (params.get("month") or "").strip() or None
+        cmd = _build_data_cmd("spark-transform", month)
+        _run_cmd(cmd)
+
+    @task.python
+    def duckdb_sync() -> None:
+        params = _get_params()
+        if not _use_elt(params):
+            print("ELT disabled; skipping duckdb-sync", flush=True)
+            return
+        month = (params.get("month") or "").strip() or None
+        cmd = _build_data_cmd("duckdb-sync", month)
+        _run_cmd(cmd)
+
+    @task.python
     def extract_parquet() -> None:
         params = _get_params()
+        if _use_elt(params):
+            print("ELT enabled; skipping legacy extract", flush=True)
+            return
         month = (params.get("month") or "").strip() or None
         cmd = _build_data_cmd("extract", month)
         _run_cmd(cmd)
@@ -144,6 +184,9 @@ def lichess_monthly_ingestion():
         _run_cmd(cmd)
 
     downloaded = download_shard()
+    uploaded = upload_raw()
+    transformed = spark_transform()
+    synced = duckdb_sync()
     extracted = extract_parquet()
     preprocessed = preprocess_features()
     split = feast_split()
@@ -151,7 +194,10 @@ def lichess_monthly_ingestion():
     validated_ge = validate_ge()
     trained = train_model()
 
-    downloaded >> extracted >> preprocessed >> split >> validated >> validated_ge >> trained
+    downloaded >> [uploaded, extracted]
+    uploaded >> transformed >> synced >> preprocessed
+    extracted >> preprocessed
+    preprocessed >> split >> validated >> validated_ge >> trained
 
 
 lichess_monthly_ingestion()

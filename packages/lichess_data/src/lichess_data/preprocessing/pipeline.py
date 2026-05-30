@@ -40,6 +40,7 @@ PIPELINE_STAGES = [
 def run_pipeline(
     path: str | Path,
     save_dir: str | Path | None = None,
+    test_size: float | None = None,
 ) -> pd.DataFrame:
     """
     Load raw parquet, run all preprocessing stages, return feature matrix.
@@ -50,6 +51,8 @@ def run_pipeline(
         Path to the raw ``.parquet`` file.
     save_dir:
         If provided, write ``features.parquet`` here.
+    test_size:
+        Reserved for CLI compatibility; splitting happens in ``lichess_features``.
 
     Returns
     -------

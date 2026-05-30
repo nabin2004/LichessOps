@@ -6,6 +6,13 @@ download:
   verify_checksum: true
   skip_existing: true
 
+storage:
+  backend: minio
+  raw_bucket: lichess-raw
+  processed_bucket: lichess-processed
+  raw_prefix: pgn
+  duckdb_path: duckdb/lichess.duckdb
+
 extract:
   # Input is passed on the CLI; output defaults under this artifact subpath.
   # Example input: artifacts/lichess_data/raw/pgn/lichess_db_standard_rated_2013-01.pgn.zst

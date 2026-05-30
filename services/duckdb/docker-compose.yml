@@ -1,5 +1,5 @@
 # Interactive DuckDB CLI (profile `tools`). Example:
-# docker compose --profile tools run --rm duckdb duckdb_data.db
+# docker compose --profile tools run --rm duckdb artifacts/lichess_data/duckdb/lichess.duckdb
 services:
   duckdb:
     image: duckdb/duckdb
@@ -7,7 +7,11 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - .:/workspace
+      - ../..:/workspace
     working_dir: /workspace
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://host.docker.internal:9000}
     # DuckDB notebook UI listens on localhost; host networking matches native usage.
     network_mode: host
