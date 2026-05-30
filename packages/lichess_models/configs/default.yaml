@@ -1,0 +1,84 @@
+training:
+  label_column: player_outcome
+  perspective: player
+  cv_folds: 3
+  scoring: balanced_accuracy
+  random_state: 42
+
+model:
+  search: randomized
+  n_iter: 24
+  candidates:
+    - logistic_regression
+    - random_forest
+    - hist_gradient_boosting
+
+features:
+  numeric:
+    - player_elo
+    - opponent_elo
+    - player_rating_diff
+    - opponent_rating_diff
+    - elo_diff
+    - elo_diff_abs
+    - avg_elo
+    - rating_diff_net
+    - expected_player
+    - player_rating_bucket_id
+    - opponent_rating_bucket_id
+    - rating_bucket_diff
+    - player_title_rank
+    - opponent_title_rank
+    - title_diff
+    - base_seconds
+    - increment_seconds
+    - estimated_40move_time
+    - base_minutes
+    - base_x_increment
+    - is_blitz
+    - is_rapid
+    - is_classical
+    - is_tournament
+    - is_gambit
+    - opening_frequency
+    - opening_population_win_rate
+    - eco_prior_count
+    - player_eco_prior_count
+    - player_eco_score
+    - h2h_total
+    - player_h2h_win_rate
+    - player_h2h_draw_rate
+    - player_h2h_loss_rate
+    - player_color_perf
+    - player_color
+    - day_of_week
+    - hour
+    - is_weekend
+    - is_night
+    - is_morning
+    - is_afternoon
+    - is_evening
+    - is_peak_gaming
+  categorical:
+    - time_control
+    - time_control_raw
+    - tournament_type
+    - eco
+    - eco_area
+    - opening_family
+    - opening_type
+    - player_rating_bucket
+    - rating_bucket_pair
+    - time_of_day
+    - session_bucket
+
+mlflow:
+  experiment_name: lichess_outcome_prediction
+  registered_model_name: lichess-outcome-predictor
+  default_stage: Staging
+
+analyze:
+  min_games: 20
+  group_by:
+    - player_rating_bucket
+    - eco

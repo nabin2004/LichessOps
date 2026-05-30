@@ -17,6 +17,10 @@ services:
       POSTGRES_DB: ${EVIDENTLY_POSTGRES_DB:-evidently}
       POSTGRES_USER: ${EVIDENTLY_POSTGRES_USER:-evidently}
       POSTGRES_PASSWORD: ${EVIDENTLY_POSTGRES_PASSWORD:-evidently}
+      EVIDENTLY_DATA_DIR: /app/data
+      EVIDENTLY_REPORTS_DIR: /app/reports
+      EVIDENTLY_REFERENCE_PATH: /app/data/reference.parquet
+      EVIDENTLY_CURRENT_PATH: /app/data/current.parquet
     depends_on:
       evidently-postgres:
         condition: service_healthy
@@ -30,6 +34,7 @@ services:
       - ./data:/app/data
       - ./models:/app/models
       - ./reports:/app/reports
+      - ${ARTIFACT_DIR:-../../artifacts}:/artifacts:ro
     networks:
       - lichess-net
 

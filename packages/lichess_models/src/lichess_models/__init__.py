@@ -1,2 +1,4 @@
-def main() -> None:
-    print("Hello from lichess-models!")
+def main() -> int:
+    from lichess_models.cli import main as cli_main
+
+    return cli_main()

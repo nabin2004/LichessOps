@@ -18,7 +18,7 @@ All stacks are merged from the repository root via [`docker-compose.yml`](../doc
 | **`flower`**      | Celery Flower (**use with** `orchestration`, e.g. `docker compose --profile orchestration --profile flower up -d flower`) |
 | **`pipeline`**    | Spark master + worker (master UI on host **8081**; S3 env wired to MinIO) |
 | **`feast`**       | Feast OSS feature server (Redis online store, optional Jupyter, CLI helper) |
-| **`evidently`**   | Minimal Evidently-oriented FastAPI (**5001**) + Streamlit (**8501**) + Postgres |
+| **`evidently`**   | Evidently drift API (**5001**) + Streamlit (**8501**) + Postgres |
 | **`ge`**          | Postgres for Great Expectations **metadata** only (run validations from `lichess-data` on the host or another image) |
 | **`tools`**       | Interactive DuckDB CLI (`docker compose --profile tools run --rm duckdb`) |
 | **`debug`**       | Airflow `airflow-cli` service |
@@ -34,8 +34,11 @@ docker compose --profile core --profile ml config --quiet
 # Object store + experiment tracking
 docker compose --profile core --profile ml up -d
 
-# Add metrics / dashboards
+# Add metrics / dashboards (start serving on host port 8082 first)
 docker compose --profile monitoring up -d
+
+# Drift reports (place reference/current parquet under services/evidently/data/)
+docker compose --profile evidently up -d --build
 
 # Airflow (first run may take several minutes for migrations)
 docker compose --profile orchestration up -d
@@ -64,7 +67,8 @@ See [docs/airflow-ingestion.md](../docs/airflow-ingestion.md) for DAG parameters
 | ----- | ------- |
 | 9000 / 9001 | MinIO API / console |
 | 5000 | MLflow UI |
-| 5001 | Evidently API (stub) |
+| 8082 | Lichess serving API (host; scraped by Prometheus) |
+| 5001 | Evidently API |
 | 3000 | Grafana |
 | 9090 | Prometheus |
 | 9100 | node-exporter |

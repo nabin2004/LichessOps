@@ -9,7 +9,10 @@ RUN groupadd -g "${USER_ID}" appuser \
 
 WORKDIR /app
 COPY src/app_streamlit /app/app_streamlit
-RUN pip install --no-cache-dir "streamlit>=1.40,<2" \
+RUN pip install --no-cache-dir \
+    "requests>=2.32,<3" \
+    "streamlit>=1.40,<2" \
+    && mkdir -p /app/reports \
     && chown -R appuser:appuser /app
 
 USER appuser

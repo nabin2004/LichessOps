@@ -9,7 +9,13 @@ RUN groupadd -g "${USER_ID}" appuser \
 
 WORKDIR /app
 COPY src/app_fastapi /app/app_fastapi
-RUN pip install --no-cache-dir "fastapi>=0.115,<1" "uvicorn[standard]>=0.32,<1" \
+RUN pip install --no-cache-dir \
+    "evidently>=0.7,<1" \
+    "fastapi>=0.115,<1" \
+    "pandas>=2.2,<3" \
+    "pyarrow>=16,<25" \
+    "uvicorn[standard]>=0.32,<1" \
+    && mkdir -p /app/data /app/reports \
     && chown -R appuser:appuser /app
 
 USER appuser

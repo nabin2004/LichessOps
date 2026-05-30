@@ -14,7 +14,7 @@ Related docs:
 | Layer                                                | Status                                                                                                              |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | **Notebooks** (`notebook/01`–`04`)                   | Working prototypes: PGN→Parquet extract, EDA, preprocessing features, move-level analysis                           |
-| **Packages** (`packages/lichess_*`)                  | `lichess_data` has a working monthly DB downloader + CLI; extract Parquet path still notebook-driven in places |
+| **Packages** (`packages/lichess_*`)                  | `lichess_data` and `lichess_features` pipelines are wired; `lichess_models` trains player-centric outcome models; `lichess_serving` exposes FastAPI `/predict` |
 | **Shared libs** (`libs/shared/`)                     | Ready: `load_config`, artifact helpers, logging                                                                     |
 | **Docker Compose** (`[services/](../services/)`) | Root [`docker-compose.yml`](../docker-compose.yml) includes profiled stacks per component; shared network `lichess-net` + open-source MinIO; see [`services/README.md`](../services/README.md) |
 | **Report** (`report/content/02-pipeline-design.tex`) | Target architecture (Airflow, MinIO, Spark, DuckDB, Great Expectations, Feast, MLflow, FastAPI, Prometheus/Grafana) |

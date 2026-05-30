@@ -35,6 +35,17 @@ def _build_features_cmd(command: str, month: str | None, extra_args: list[str] |
     return cmd
 
 
+def _build_models_cmd(command: str, month: str | None, extra_args: list[str] | None = None) -> list[str]:
+    cmd = [os.environ.get("PYTHON_BIN", "python"), "-m", "lichess_models.cli", command]
+    if month:
+        cmd.extend(["--month", month])
+    else:
+        cmd.append("--previous-month")
+    if extra_args:
+        cmd.extend(extra_args)
+    return cmd
+
+
 def _run_cmd(cmd: list[str]) -> None:
     print("Running:", " ".join(cmd), flush=True)
     subprocess.run(cmd, check=True)
@@ -47,7 +58,7 @@ def _get_params() -> dict:
 
 @dag(
     dag_id="lichess_monthly_ingestion",
-    description="Monthly download -> extract -> preprocess -> feast split -> validate for lichess_data.",
+    description="Monthly download -> extract -> preprocess -> feast split -> validate -> train for lichess_data.",
     schedule="0 3 1 * *",
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -59,6 +70,7 @@ def _get_params() -> dict:
         "skip_existing": True,
         "test_size": 0.2,
         "run_validation": True,
+        "run_training": True,
     },
 )
 def lichess_monthly_ingestion():
@@ -121,14 +133,25 @@ def lichess_monthly_ingestion():
         cmd = _build_data_cmd("validate-ge", month, ["--stage", "all", "--strict"])
         _run_cmd(cmd)
 
+    @task.python
+    def train_model() -> None:
+        params = _get_params()
+        if not bool(params.get("run_training", True)):
+            print("Training skipped by params.run_training", flush=True)
+            return
+        month = (params.get("month") or "").strip() or None
+        cmd = _build_models_cmd("train", month, ["--no-mlflow"])
+        _run_cmd(cmd)
+
     downloaded = download_shard()
     extracted = extract_parquet()
     preprocessed = preprocess_features()
     split = feast_split()
     validated = validate_shard()
     validated_ge = validate_ge()
+    trained = train_model()
 
-    downloaded >> extracted >> preprocessed >> split >> validated >> validated_ge
+    downloaded >> extracted >> preprocessed >> split >> validated >> validated_ge >> trained
 
 
 lichess_monthly_ingestion()
