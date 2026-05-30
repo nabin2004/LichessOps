@@ -9,11 +9,14 @@ import pandas as pd
 from libs.shared import get_logger
 
 from lichess_data.preprocessing.transforms import (
+    add_historical_pregame_features,
     encode_result,
     extract_date_features,
     extract_move_features,
     extract_opening_features,
     extract_time_features,
+    extract_time_control_features,
+    extract_title_features,
     impute_ratings,
     parse_event,
 )
@@ -25,8 +28,11 @@ PIPELINE_STAGES = [
     encode_result,
     extract_date_features,
     extract_time_features,
+    extract_time_control_features,
     impute_ratings,
+    extract_title_features,
     extract_opening_features,
+    add_historical_pregame_features,
     extract_move_features,
 ]
 

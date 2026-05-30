@@ -23,7 +23,7 @@ services:
       - lichess-net
 
   node-exporter:
-    image: prom/node-exporter:v1.11.4
+    image: prom/node-exporter:v1.11.0
     container_name: lichess-node-exporter
     profiles: [monitoring]
     restart: unless-stopped

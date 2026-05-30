@@ -17,7 +17,7 @@ All stacks are merged from the repository root via [`docker-compose.yml`](../doc
 | **`orchestration`** | Apache Airflow (CeleryExecutor) + Postgres + Redis |
 | **`flower`**      | Celery Flower (**use with** `orchestration`, e.g. `docker compose --profile orchestration --profile flower up -d flower`) |
 | **`pipeline`**    | Spark master + worker (master UI on host **8081**; S3 env wired to MinIO) |
-| **`feast`**       | Legacy Feast **0.11.x** demo (Postgres, Redis, Kafka, core, serving, job service, Jupyter) |
+| **`feast`**       | Feast OSS feature server (Redis online store, optional Jupyter, CLI helper) |
 | **`evidently`**   | Minimal Evidently-oriented FastAPI (**5001**) + Streamlit (**8501**) + Postgres |
 | **`ge`**          | Postgres for Great Expectations **metadata** only (run validations from `lichess-data` on the host or another image) |
 | **`tools`**       | Interactive DuckDB CLI (`docker compose --profile tools run --rm duckdb`) |
@@ -44,6 +44,20 @@ docker compose --profile orchestration up -d
 docker compose --profile core --profile pipeline up -d
 ```
 
+## Airflow ingestion DAGs
+
+DAGs live under [services/airflow/dags](airflow/dags). The `lichess_monthly_ingestion` DAG runs the full `lichess_data` ingestion chain (download -> extract -> preprocess -> validate).
+
+Recommended environment variables (set in `services/airflow/.env` or a root `.env`):
+
+```bash
+AIRFLOW_PROJ_DIR=./services/airflow
+AIRFLOW_PROJECT_DIR=.
+_PIP_ADDITIONAL_REQUIREMENTS=chess==1.10.0 zstandard==0.23.0 pandas==2.2.2 pyarrow==16.1.0
+```
+
+See [docs/airflow-ingestion.md](../docs/airflow-ingestion.md) for DAG parameters and troubleshooting.
+
 ## Host ports (defaults)
 
 | Port  | Service |
@@ -59,14 +73,14 @@ docker compose --profile core --profile pipeline up -d
 | 7077 | Spark master RPC |
 | 5555 | Flower (when `flower` profile is used) |
 | 8501 | Evidently Streamlit |
-| 6565 / 6566 / 8888 / 9094 | Feast gRPC / gRPC / Jupyter / Kafka external listener |
+| 6566 / 8888 | Feast feature server / Jupyter |
 
 Postgres and Redis for Airflow, MLflow, Evidently, GE, and Feast are **not published** to the host.
 
 ## Environment
 
 - [`services/.env.example`](.env.example) — shared variables (MinIO, Grafana admin, GX DB, Evidently DB, `AIRFLOW_UID`).
-- [`services/feast/.env.example`](feast/.env.example) — Feast version and DB defaults.
+- [`services/feast/.env.example`](feast/.env.example) — Feast version, repo path, and Jupyter token.
 - **`services/airflow/.env`** — optional; Airflow image reads `AIRFLOW_UID` here (do not commit secrets).
 
 ## Implementation notes
@@ -74,5 +88,5 @@ Postgres and Redis for Airflow, MLflow, Evidently, GE, and Feast are **not publi
 - **MinIO** uses a pinned `minio/minio` image and a named volume (no bind-mounted `./data`). The `minio_setup` job uses `minio/mc` to create buckets.
 - **MLflow** no longer embeds MinIO; it depends on the shared `minio` service.
 - **Grafana** ships only inside **`services/prometheus/`**; the old standalone `services/grafana/` stack was removed.
-- **Feast 0.11** is optional and legacy; modern Feast projects typically use the Feast CLI with different images.
+- **Feast** uses the Python feature server image; run `feast apply` via the `feast-cli` service before serving features.
 - **DuckDB** uses `network_mode: host` so `CALL start_ui()` matches native DuckDB UI expectations on Linux.

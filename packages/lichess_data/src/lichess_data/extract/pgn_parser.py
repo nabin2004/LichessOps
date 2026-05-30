@@ -32,6 +32,8 @@ class PGNParser:
             "round":              headers.get("Round"),
             "white":              headers.get("White"),
             "black":              headers.get("Black"),
+            "white_title":        headers.get("WhiteTitle"),
+            "black_title":        headers.get("BlackTitle"),
             "result":             headers.get("Result"),
             "utc_date":           headers.get("UTCDate"),
             "utc_time":           headers.get("UTCTime"),

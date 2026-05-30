@@ -18,9 +18,14 @@ def sample_games() -> pd.DataFrame:
         [
             {
                 "event": "Rated Blitz game",
+                "site": "https://lichess.org/game1",
                 "result": "1-0",
                 "utc_date": "2013.01.01",
                 "utc_time": "08:30:00",
+                "white": "player1",
+                "black": "player2",
+                "white_title": "FM",
+                "black_title": "IM",
                 "white_elo": 1500,
                 "black_elo": None,
                 "white_rating_diff": 10,
@@ -32,9 +37,14 @@ def sample_games() -> pd.DataFrame:
             },
             {
                 "event": "Rated Bullet tournament https://lichess.org/tournament/abc",
+                "site": "https://lichess.org/game2",
                 "result": "1/2-1/2",
                 "utc_date": "2013.01.02",
                 "utc_time": "20:15:00",
+                "white": "player3",
+                "black": "player4",
+                "white_title": None,
+                "black_title": "CM",
                 "white_elo": 1200,
                 "black_elo": 1250,
                 "white_rating_diff": 0,
@@ -46,9 +56,14 @@ def sample_games() -> pd.DataFrame:
             },
             {
                 "event": "Rated Blitz game",
+                "site": "https://lichess.org/game3",
                 "result": "0-1",
                 "utc_date": "2013.01.03",
                 "utc_time": "17:00:00",
+                "white": "player1",
+                "black": "player2",
+                "white_title": "FM",
+                "black_title": "IM",
                 "white_elo": 1400,
                 "black_elo": 1450,
                 "white_rating_diff": -5,
@@ -68,6 +83,8 @@ def test_parse_event(sample_games: pd.DataFrame) -> None:
     assert df.loc[1, "time_control"] == "Bullet"
     assert df.loc[1, "is_tournament"] == 1
     assert "lichess.org/tournament/abc" in df.loc[1, "tournament_url"]
+    assert df.loc[1, "tournament_type"] == "Arena"
+    assert df.loc[0, "tournament_type"] == "Game"
     assert df.loc[0, "time_control_raw"] == "180+0"
 
 
@@ -101,5 +118,12 @@ def test_run_pipeline(tmp_path, sample_games: pd.DataFrame) -> None:
     assert "elo_diff" in train.columns
     assert "move_count" in train.columns
     assert "tc_seconds" in train.columns
+    assert "expected_white" in train.columns
+    assert "base_seconds" in train.columns
+    assert "increment_seconds" in train.columns
+    assert "title_diff" in train.columns
+    assert "opening_frequency" in train.columns
+    assert "white_eco_score" in train.columns
+    assert "h2h_total" in train.columns
     assert (out / "train.parquet").exists()
     assert (out / "test.parquet").exists()

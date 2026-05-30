@@ -20,6 +20,8 @@ SAMPLE_PGN = """\
 [Date "2013.01.01"]
 [White "player1"]
 [Black "player2"]
+[WhiteTitle "FM"]
+[BlackTitle "IM"]
 [Result "1-0"]
 [UTCDate "2013.01.01"]
 [UTCTime "08:30:00"]
@@ -70,6 +72,8 @@ def test_pgn_parser_parses_headers_and_moves() -> None:
     assert record["event"] == "Rated Blitz game"
     assert record["white"] == "player1"
     assert record["black"] == "player2"
+    assert record["white_title"] == "FM"
+    assert record["black_title"] == "IM"
     assert record["white_elo"] == 1500
     assert record["moves"] == ["e2e4", "c7c5", "g1f3", "d7d6"]
 

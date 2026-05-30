@@ -11,3 +11,7 @@ extract:
   # Example input: artifacts/lichess_data/raw/pgn/lichess_db_standard_rated_2013-01.pgn.zst
   output_subpath: processed
   batch_size: 5000
+
+preprocessing:
+  output_subpath: preprocessed
+  test_size: 0.2
