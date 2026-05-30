@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import timedelta
 
 from feast import Entity, FeatureService, FeatureView, Field, FileSource
@@ -11,8 +12,8 @@ from libs.shared import load_config
 
 cfg = load_config("lichess_features")
 feast_cfg = cfg.get("feast", {})
-source_path = feast_cfg.get(
-	"source_path", "artifacts/lichess_data/processed/train.parquet"
+source_path = os.environ.get("FEAST_SOURCE_PATH") or feast_cfg.get(
+	"source_path", "artifacts/lichess_data/preprocessed/features.parquet"
 )
 ttl_days = int(feast_cfg.get("ttl_days", 3650))
 

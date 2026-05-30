@@ -14,4 +14,8 @@ extract:
 
 preprocessing:
   output_subpath: preprocessed
-  test_size: 0.2
+
+great_expectations:
+  context_root: great_expectations
+  processed_suite: processed_minimal
+  preprocessed_suite: preprocessed_minimal

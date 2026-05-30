@@ -57,7 +57,7 @@ flowchart TD
 | Pipeline stage         | Source notebook(s)                          | Package                  | Target submodules                                                                     |
 | ---------------------- | ------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------- |
 | Extract + load         | `01_notebook`                               | `lichess_data`           | `extract/` (PGN→Parquet), optional `load/` for object storage uploads                 |
-| Validate               | stubs in `01` + findings in `02`            | `lichess_data`           | `validate/` (Great Expectations checkpoints later)                                    |
+| Validate               | stubs in `01` + findings in `02`            | `lichess_data`           | `validate/` (Great Expectations minimal checks implemented)                           |
 | Preprocess / transform | `03`, partially schema from `01`            | `lichess_data`           | `preprocessing/` (pandas locally; Spark job when you adopt the report stack)          |
 | EDA / move analysis    | `02`, `04`                                  | *(no dedicated package)* | Keep in `notebook/` or migrate one-off scripts to `scripts/` until rules are codified |
 | Feature engineering    | plan in `01` + engineered columns from `03` | `lichess_features`       | feature definitions plus Feast repo when offline store exists                         |
@@ -245,7 +245,7 @@ flowchart LR
 | `airflow/`                 | Scheduler and web UI; mounts DAG definitions (for example under `app/dags/` when added) |
 | `spark/`                   | Distributed transform job reading MinIO streams, writing partitioned Parquet            |
 | `duckdb/`                  | Optional long-lived analytic database over processed Parquet                            |
-| `great_expec/`             | Great Expectations checkpoints against DuckDB or files                                  |
+| `great_expec/`             | Great Expectations metadata store (optional), GE runs via `lichess_data` CLI           |
 | `feast/`                   | Feature store coordinator plus offline configuration                                    |
 | `mlflow/`                  | Tracking server backed by filesystem or MinIO artifact store                            |
 | `evidently/`               | Drift dashboards or batch evaluations (parallel to Prometheus for model quality)        |

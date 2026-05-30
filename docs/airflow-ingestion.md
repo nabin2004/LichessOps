@@ -15,8 +15,8 @@ Schedule: monthly on the 1st at 03:00 UTC (`0 3 1 * *`), `catchup=False`.
 | `month` | `""` | Use a specific shard like `2024-06`; empty uses `--previous-month`. |
 | `verify_checksum` | `true` | Validate downloaded shard checksum during download. |
 | `skip_existing` | `true` | Skip re-download if the shard already exists and is valid. |
-| `test_size` | `0.2` | Fraction for temporal test split in preprocessing. |
-| `run_validation` | `true` | Run checksum validation after download. |
+| `test_size` | `0.2` | Fraction for temporal test split in Feast (`lichess-features split`). |
+| `run_validation` | `true` | Run checksum validation and Great Expectations checks. |
 
 ## Local setup
 
@@ -36,7 +36,7 @@ AIRFLOW_PROJECT_DIR=.
 2. Install Python deps into the Airflow image. For local dev, set `_PIP_ADDITIONAL_REQUIREMENTS` in `services/airflow/.env` or a root `.env`:
 
 ```bash
-_PIP_ADDITIONAL_REQUIREMENTS=chess==1.10.0 zstandard==0.23.0 pandas==2.2.2 pyarrow==16.1.0
+_PIP_ADDITIONAL_REQUIREMENTS=chess==1.10.0 zstandard==0.23.0 pandas==2.2.2 pyarrow==16.1.0 feast==0.46.0
 ```
 
 For a longer-lived setup, build a custom Airflow image that bakes these dependencies in.
@@ -55,13 +55,21 @@ docker compose --profile orchestration up -d
 
 If `month` is blank, the DAG uses `--previous-month` for download, extract, preprocess, and validate.
 
+Validation now includes two steps:
+
+1. Checksum validation on the raw shard.
+2. Great Expectations checks on processed, features, and preprocessed train/test data.
+
+See [Great Expectations validation](./great-expectations.md) for details.
+
 ## Output locations
 
 Defaults resolve to the artifact layout described in [Artifact management](./artifact-management.md):
 
 - Raw shard: `artifacts/lichess_data/raw/pgn/lichess_db_standard_rated_YYYY-MM.pgn.zst`
 - Extracted parquet: `artifacts/lichess_data/processed/YYYY-MM.parquet`
-- Preprocessed train/test: `artifacts/lichess_data/preprocessed/YYYY-MM/train.parquet` and `test.parquet`
+- Preprocessed features (full history): `artifacts/lichess_data/preprocessed/YYYY-MM/features.parquet`
+- Train/test after Feast split: `artifacts/lichess_data/preprocessed/YYYY-MM/train.parquet` and `test.parquet`
 
 ## Troubleshooting
 

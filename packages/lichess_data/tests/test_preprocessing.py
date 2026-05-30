@@ -8,7 +8,6 @@ import pytest
 from lichess_data.preprocessing import (
     parse_event,
     run_pipeline,
-    temporal_split,
 )
 
 
@@ -88,42 +87,23 @@ def test_parse_event(sample_games: pd.DataFrame) -> None:
     assert df.loc[0, "time_control_raw"] == "180+0"
 
 
-def test_temporal_split_orders_by_time(sample_games: pd.DataFrame) -> None:
-    from lichess_data.preprocessing.transforms import (
-        encode_result,
-        extract_date_features,
-        extract_time_features,
-    )
-
-    df = sample_games.copy()
-    for fn in (parse_event, encode_result, extract_date_features, extract_time_features):
-        df = fn(df)
-
-    train, test = temporal_split(df, test_size=1 / 3)
-    assert len(train) == 2
-    assert len(test) == 1
-    assert train["utc_datetime"].max() <= test["utc_datetime"].min()
-
-
 def test_run_pipeline(tmp_path, sample_games: pd.DataFrame) -> None:
     raw = tmp_path / "raw.parquet"
     out = tmp_path / "processed"
     sample_games.to_parquet(raw, index=False)
 
-    train, test = run_pipeline(raw, test_size=1 / 3, save_dir=out)
+    features = run_pipeline(raw, save_dir=out)
 
-    assert len(train) == 2
-    assert len(test) == 1
-    assert "result_label" in train.columns
-    assert "elo_diff" in train.columns
-    assert "move_count" in train.columns
-    assert "tc_seconds" in train.columns
-    assert "expected_white" in train.columns
-    assert "base_seconds" in train.columns
-    assert "increment_seconds" in train.columns
-    assert "title_diff" in train.columns
-    assert "opening_frequency" in train.columns
-    assert "white_eco_score" in train.columns
-    assert "h2h_total" in train.columns
-    assert (out / "train.parquet").exists()
-    assert (out / "test.parquet").exists()
+    assert len(features) == 3
+    assert "result_label" in features.columns
+    assert "elo_diff" in features.columns
+    assert "move_count" in features.columns
+    assert "tc_seconds" in features.columns
+    assert "expected_white" in features.columns
+    assert "base_seconds" in features.columns
+    assert "increment_seconds" in features.columns
+    assert "title_diff" in features.columns
+    assert "opening_frequency" in features.columns
+    assert "white_eco_score" in features.columns
+    assert "h2h_total" in features.columns
+    assert (out / "features.parquet").exists()

@@ -7,7 +7,12 @@ authors = [
     { name = "Nabin Oli", email = "olinabin2004@gmail.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "lichess-data",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
 
 [project.scripts]
 lichess-features = "lichess_features:main"
@@ -15,3 +20,6 @@ lichess-features = "lichess_features:main"
 [build-system]
 requires = ["uv_build>=0.11.6,<0.12.0"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+lichess-data = { workspace = true }

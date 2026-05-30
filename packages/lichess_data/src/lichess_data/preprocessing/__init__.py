@@ -1,9 +1,8 @@
-"""Transform raw Lichess Parquet into model-ready train/test splits."""
+"""Transform raw Lichess Parquet into model-ready features."""
 
 from lichess_data.preprocessing.pipeline import (
     PIPELINE_STAGES,
     run_pipeline,
-    temporal_split,
 )
 from lichess_data.preprocessing.transforms import (
     add_historical_pregame_features,
@@ -31,5 +30,4 @@ __all__ = [
     "impute_ratings",
     "parse_event",
     "run_pipeline",
-    "temporal_split",
 ]

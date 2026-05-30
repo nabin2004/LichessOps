@@ -1,4 +1,4 @@
-"""Orchestrates preprocessing transforms and temporal train/test split."""
+"""Orchestrates preprocessing transforms into model-ready features."""
 
 from __future__ import annotations
 
@@ -37,51 +37,23 @@ PIPELINE_STAGES = [
 ]
 
 
-def temporal_split(
-    df: pd.DataFrame, test_size: float = 0.2
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Sort by ``utc_datetime`` and split chronologically."""
-    log.info("Stage 8 — temporal train/test split (test_size=%.2f)", test_size)
-
-    df = df.sort_values("utc_datetime").reset_index(drop=True)
-    split_idx = int(len(df) * (1 - test_size))
-    train, test = df.iloc[:split_idx], df.iloc[split_idx:]
-
-    log.info(
-        "  train: %d rows (%s → %s)",
-        len(train),
-        train["utc_datetime"].min(),
-        train["utc_datetime"].max(),
-    )
-    log.info(
-        "  test:  %d rows (%s → %s)",
-        len(test),
-        test["utc_datetime"].min(),
-        test["utc_datetime"].max(),
-    )
-    return train, test
-
-
 def run_pipeline(
     path: str | Path,
-    test_size: float = 0.2,
     save_dir: str | Path | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
     """
-    Load raw parquet, run all preprocessing stages, return (train, test).
+    Load raw parquet, run all preprocessing stages, return feature matrix.
 
     Parameters
     ----------
     path:
         Path to the raw ``.parquet`` file.
-    test_size:
-        Fraction of data reserved for test (chronological tail).
     save_dir:
-        If provided, write ``train.parquet`` and ``test.parquet`` here.
+        If provided, write ``features.parquet`` here.
 
     Returns
     -------
-    (df_train, df_test)
+    Feature dataframe (full history; split happens in ``lichess_features``).
     """
     path = Path(path)
     log.info("═" * 60)
@@ -95,17 +67,12 @@ def run_pipeline(
         log.info("  → shape after %-30s: %s", stage_fn.__name__, df.shape)
         log.info("─" * 60)
 
-    df_train, df_test = temporal_split(df, test_size=test_size)
-
     if save_dir is not None:
         out = Path(save_dir)
         out.mkdir(parents=True, exist_ok=True)
-        train_path = out / "train.parquet"
-        test_path = out / "test.parquet"
-        df_train.to_parquet(train_path, index=False)
-        df_test.to_parquet(test_path, index=False)
-        log.info("Saved → %s", train_path)
-        log.info("Saved → %s", test_path)
+        features_path = out / "features.parquet"
+        df.to_parquet(features_path, index=False)
+        log.info("Saved → %s", features_path)
 
-    log.info("Pipeline complete. Train: %s | Test: %s", df_train.shape, df_test.shape)
-    return df_train, df_test
+    log.info("Pipeline complete. Features: %s", df.shape)
+    return df
