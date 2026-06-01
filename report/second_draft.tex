@@ -1,0 +1,73 @@
+\documentclass[11pt,a4paper]{report}
+
+\input{metadata}
+\input{preamble}
+
+\begin{document}
+
+%TC:ignore
+% Word count (scripts/gen-body-wordcount.sh) excludes everything until %TC:endignore
+% below: title page, abstract, TOC, and lists of figures/tables.
+
+% Avoid duplicate Hyperref anchors on Title Page / first body page (pdfLaTeX)
+\hypersetup{pageanchor=false}
+\input{content/cover-page}
+\hypersetup{pageanchor=true}
+\cleardoublepage
+
+\chapter*{Abstract}
+\phantomsection
+\addcontentsline{toc}{chapter}{Abstract}
+
+This log report outlines the planning and design of a data management and analytics strategy for supervised machine learning within a chosen problem domain.It explains three supervised machine learning candidate datasets. We select the Lichess Open Database. It also outlines an MLOps pipeline covering data ingestion, pre-processing, model development, deployment, and monitoring, serving both interactive analysts (notebooks) and an automated model-training workflow. The design is justified with industry and research literature and it also anticipates iterative refinement as implementation begins.
+
+
+\tableofcontents
+\clearpage
+
+\listoffigures
+\listoftables
+\clearpage
+%TC:endignore
+
+\input{content/01-candidate-datasets}
+\input{content/02-pipeline-design}
+\input{content/03-storage-plan}
+
+\section{Final Pipeline Plan}
+\input{report2/content/01-intro}
+\input{report2/content/02-shared}
+\input{report2/content/03-ingestion}
+\input{report2/content/04-preprocessing}
+\input{report2/content/05-model-dev}
+\input{report2/content/06-deployment}
+\input{report2/content/07-monitoring}
+\input{report2/content/08-reflection}
+\input{report2/content/09-conclusion}
+
+
+
+\input{content/04-reflection}
+
+
+%TC:ignore
+% Word count excludes appendix and bibliography (from here to %TC:endignore).
+
+\appendix
+\input{content/app-code-index}
+\begingroup
+\singlespacing
+\small
+\setlength{\parskip}{0.25ex plus 0.1ex}
+\setlist{nosep,leftmargin=*}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{-0.75ex \@plus -0.2ex}{0.4ex}{\normalfont\bfseries\small}}
+\makeatother
+\input{content/app-candidate-datasets}
+\input{content/app-lichess-open-database}
+\endgroup
+
+\printbibliography[heading=bibintoc]
+%TC:endignore
+
+\end{document}

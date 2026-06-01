@@ -4,7 +4,6 @@ from datetime import datetime
 import os
 import subprocess
 
-from airflow.decorators import get_current_context
 from airflow.sdk import dag, task
 
 DEFAULT_ARGS = {
@@ -48,11 +47,26 @@ def _build_models_cmd(command: str, month: str | None, extra_args: list[str] | N
 
 def _run_cmd(cmd: list[str]) -> None:
     print("Running:", " ".join(cmd), flush=True)
-    subprocess.run(cmd, check=True)
+    env = os.environ.copy()
+    package_paths = os.pathsep.join(
+        [
+            "/opt/airflow/project/libs",
+            "/opt/airflow/project/src/lichess/packages/lichess_data/src",
+            "/opt/airflow/project/src/lichess/packages/lichess_features/src",
+            "/opt/airflow/project/src/lichess/packages/lichess_models/src",
+        ]
+    )
+    existing_pythonpath = env.get("PYTHONPATH", "").strip()
+    if existing_pythonpath:
+        env["PYTHONPATH"] = f"{package_paths}{os.pathsep}{existing_pythonpath}"
+    else:
+        env["PYTHONPATH"] = package_paths
+    subprocess.run(cmd, check=True, env=env)
 
 
-def _get_params() -> dict:
-    context = get_current_context()
+def _get_params(context: dict | None) -> dict:
+    if not context:
+        return {}
     return context.get("params", {})
 
 
@@ -72,6 +86,7 @@ def _use_elt(params: dict) -> bool:
     tags=["lichess", "ingestion"],
     params={
         "month": "",
+        "year": "",
         "verify_checksum": True,
         "skip_existing": True,
         "test_size": 0.2,
@@ -82,9 +97,19 @@ def _use_elt(params: dict) -> bool:
 )
 def lichess_monthly_ingestion():
     @task.python
-    def download_shard() -> None:
-        params = _get_params()
+    def resolve_months(**context) -> list[str | None]:
+        params = _get_params(context)
         month = (params.get("month") or "").strip() or None
+        if month:
+            return [month]
+        year = (params.get("year") or "").strip()
+        if not year:
+            return [None]
+        return [f"{year}-{index:02d}" for index in range(1, 13)]
+
+    @task.python
+    def download_shard(month: str | None, **context) -> None:
+        params = _get_params(context)
         verify = bool(params.get("verify_checksum", True))
         skip_existing = bool(params.get("skip_existing", True))
 
@@ -98,101 +123,94 @@ def lichess_monthly_ingestion():
         _run_cmd(cmd)
 
     @task.python
-    def upload_raw() -> None:
-        params = _get_params()
+    def upload_raw(month: str | None, **context) -> None:
+        params = _get_params(context)
         if not _use_elt(params):
             print("ELT disabled; skipping upload", flush=True)
             return
-        month = (params.get("month") or "").strip() or None
         cmd = _build_data_cmd("upload", month)
         _run_cmd(cmd)
 
     @task.python
-    def spark_transform() -> None:
-        params = _get_params()
+    def spark_transform(month: str | None, **context) -> None:
+        params = _get_params(context)
         if not _use_elt(params):
             print("ELT disabled; skipping spark-transform", flush=True)
             return
-        month = (params.get("month") or "").strip() or None
         cmd = _build_data_cmd("spark-transform", month)
         _run_cmd(cmd)
 
     @task.python
-    def duckdb_sync() -> None:
-        params = _get_params()
+    def duckdb_sync(month: str | None, **context) -> None:
+        params = _get_params(context)
         if not _use_elt(params):
             print("ELT disabled; skipping duckdb-sync", flush=True)
             return
-        month = (params.get("month") or "").strip() or None
         cmd = _build_data_cmd("duckdb-sync", month)
         _run_cmd(cmd)
 
     @task.python
-    def extract_parquet() -> None:
-        params = _get_params()
+    def extract_parquet(month: str | None, **context) -> None:
+        params = _get_params(context)
         if _use_elt(params):
             print("ELT enabled; skipping legacy extract", flush=True)
             return
-        month = (params.get("month") or "").strip() or None
         cmd = _build_data_cmd("extract", month)
         _run_cmd(cmd)
 
     @task.python
-    def preprocess_features() -> None:
-        params = _get_params()
-        month = (params.get("month") or "").strip() or None
+    def preprocess_features(month: str | None, **context) -> None:
+        params = _get_params(context)
         cmd = _build_data_cmd("preprocess", month)
         _run_cmd(cmd)
 
     @task.python
-    def feast_split() -> None:
-        params = _get_params()
-        month = (params.get("month") or "").strip() or None
+    def feast_split(month: str | None, **context) -> None:
+        params = _get_params(context)
         test_size = params.get("test_size", 0.2)
         extra = ["--test-size", str(test_size)]
         cmd = _build_features_cmd("split", month, extra)
         _run_cmd(cmd)
 
     @task.python
-    def validate_shard() -> None:
-        params = _get_params()
+    def validate_shard(month: str | None, **context) -> None:
+        params = _get_params(context)
         if not bool(params.get("run_validation", True)):
             print("Validation skipped by params.run_validation", flush=True)
             return
-        month = (params.get("month") or "").strip() or None
         cmd = _build_data_cmd("validate", month, ["--strict"])
         _run_cmd(cmd)
 
     @task.python
-    def validate_ge() -> None:
-        params = _get_params()
+    def validate_ge(month: str | None, **context) -> None:
+        params = _get_params(context)
         if not bool(params.get("run_validation", True)):
             print("Validation skipped by params.run_validation", flush=True)
             return
-        month = (params.get("month") or "").strip() or None
         cmd = _build_data_cmd("validate-ge", month, ["--stage", "all", "--strict"])
         _run_cmd(cmd)
 
     @task.python
-    def train_model() -> None:
-        params = _get_params()
+    def train_model(month: str | None, **context) -> None:
+        params = _get_params(context)
         if not bool(params.get("run_training", True)):
             print("Training skipped by params.run_training", flush=True)
             return
-        month = (params.get("month") or "").strip() or None
         cmd = _build_models_cmd("train", month, ["--no-mlflow"])
         _run_cmd(cmd)
 
-    downloaded = download_shard()
-    uploaded = upload_raw()
-    transformed = spark_transform()
-    synced = duckdb_sync()
-    extracted = extract_parquet()
-    preprocessed = preprocess_features()
-    split = feast_split()
-    validated = validate_shard()
-    validated_ge = validate_ge()
-    trained = train_model()
+    months = resolve_months()
+
+    downloaded = download_shard.expand(month=months)
+    uploaded = upload_raw.expand(month=months)
+    transformed = spark_transform.expand(month=months)
+    synced = duckdb_sync.expand(month=months)
+    extracted = extract_parquet.expand(month=months)
+    preprocessed = preprocess_features.expand(month=months)
+    split = feast_split.expand(month=months)
+    validated = validate_shard.expand(month=months)
+    validated_ge = validate_ge.expand(month=months)
+    trained = train_model.expand(month=months)
 
     downloaded >> [uploaded, extracted]
     uploaded >> transformed >> synced >> preprocessed

@@ -1,0 +1,23 @@
+\chapter{Reflective Discussion}
+\label{ch:reflection-formative}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\linewidth,height=0.65\textheight,keepaspectratio]{reflection}
+  \caption[Gibb's reflective cycle for iterative MLOps planning.]{\textit{Gibb's reflective cycle} applied to iterative planning and implementation for the Lichess MLOps pipeline.}
+  \label{fig:reflection-iterations}
+\end{figure}
+
+% Task~1 described a pipeline I had not yet wired: Airflow orchestration, MinIO layers, Spark transform, DuckDB analytics, Feast for temporal features, MLflow registry, FastAPI serving, and Prometheus plus Evidently for observability. The implementation in this repository follows that spine closely. Where the live system diverges, the reasons are mostly resource constraints on a student laptop rather than a change of mind about architecture.
+
+% \textbf{Initial plan versus what I built.} I planned ELT from the start and stuck with it. The surprise was how much shared plumbing (\codecite{code_config_loader}, artefact paths, S3 helpers) mattered before any stage felt finished. I added the \texttt{use\_elt} DAG flag after fighting Spark memory on a single-node cluster; the legacy extract path is not in the original diagram but saved weeks of blocked progress. Config and artefact managers from my early draft notes became real modules instead of remaining bullet points.
+
+% \textbf{Final plan versus gaps.} Serving still runs on the host, not as a Compose service with health checks and rolling updates. Evidently drift is API-triggered: I copy Parquet into \texttt{services/evidently/data/} and call the report endpoint rather than a DAG task firing automatically. Retrain-on-drift is design-only. Great Expectations stores metadata in Postgres while validations execute from the host CLI---fine for demonstration, fragile for a team handover. These gaps are acceptable for coursework marks focused on ``implemented pipeline with evidence,'' but I would close them before calling the system production-ready.
+
+% \textbf{What I would improve next.} Containerise \texttt{lichess-serving} beside MLflow; add an Airflow branch after \texttt{validate\_ge} that calls Evidently and opens an MLflow run when drift exceeds a threshold; promote models through Staging $\rightarrow$ Production with a canary metric gate; wire opening weakness analysis into the API so the player-facing story in my draft is user-visible, not a script. Storage-wise I would document retention on \texttt{lichess-raw} keys (months are large) and test restore from backup.
+
+% Comparing diagrams from Task~1 to this repo, the biggest lesson is iterative refinement the brief emphasises: the written plan was directionally right, but checksum gating, chronological splits, and shared config emerged from debugging real Lichess files, not from the first whiteboard pass.
+
+% \textbf{Discrepancies worth naming.} Task~1 showed decompression inside ingestion; I deferred decompress to Spark or the legacy extract precisely because ELT keeps the raw blob bit-identical to Lichess. Task~1 implied automated alerts to Slack; I rely on Airflow email and log files today. Task~1's monitoring diagram suggested continuous drift scoring; Evidently runs when I invoke it. None of these invalidate the architecture---they are scope cuts I would schedule if this were a team sprint.
+
+% \textbf{Personal takeaway.} Building the pipeline taught me more about data engineering than tuning the classifier. Chess data is messy, large, and interesting; tooling choices (MinIO, DuckDB, Airflow) only earn their keep when retrieval paths and validation gates are boringly reliable. I am satisfied the repository demonstrates implementation depth; the reflection is where I acknowledge what remains stubbed rather than pretending the last ten percent is done.

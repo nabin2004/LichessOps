@@ -1,0 +1,48 @@
+\section{Data pre-processing}
+\label{sec:preprocessing}
+
+\subsection{What}
+
+Pre-processing turns the chess games into tabular features which later ML libraries can ingest. Inputs are the raw \texttt{.pgn.zst} in MinIO. Outputs include partitioned Parquet under \texttt{lichess-processed}, a DuckDB file with star-schema tables which are Pandas-derived feature in Parquet format. Feast train/test datasets, and Great Expectations validation artefacts. If this stage is wrong, the model stage inherits silent bugs. Hence the emphasis has been given on validation before training.
+
+\subsection{Why}
+
+PGN is the lingua franca of chess software but a poor format for data analytics efficiency. It consists of variable header keys, multi-line movetext and comments which doesn't fit the tabular format required for efficient data analysis. We store the final artifact file as Apache Parquet \parencite{apache_parquet} which provides us columnar compression and a schema which is compatible across Spark, DuckDB, and Pandas. Here, DuckDB lets run SQL checks such as (\emph{e.g.} ``how many games lack an ECO code?''). For feature storage, I employed Feast.Feast \parencite{feast} handles point-in-time joins so I do not leak future results into past rows, a mistake I almost made when I was first time computing rolling win rates. Great Expectations \parencite{great_expectations} encodes data validation expectations as a checkpoints. When a new monthly data arrives with a schema drift, then the pipeline halts the process instead of training on that drifted data.
+
+\subsection{How}
+
+We do following operations in the pre-processing stage:
+
+
+\subsubsection{Spark transform} 
+
+Task \texttt{spark\_transform} submits work in \codecite{code_spark_transform}. The job streams the Zstandard payload, parses headers into structured fields, builds \texttt{fact\_games} plus dimension tables, and writes a wide games table to the processed bucket. I use the \texttt{pipeline} Compose profile (\texttt{core} + \texttt{pipeline}) when RAM allows; otherwise \texttt{run\_local\_transform} keeps development unblocked.
+
+\subsubsection{DuckDB sync.} 
+\codecite{code_duckdb_sync} registers Parquet from MinIO through \texttt{httpfs} and exports a single wide table for the Python feature code. Analysts can attach the same \texttt{.duckdb} file in the CLI container (\texttt{tools} profile) and run ad hoc SQL---that was the ``interactive consumer'' from Task~1.
+
+\subsubsection{Pandas pipeline.} 
+\texttt{preprocess\_features} executes ten stages defined in \codecite{code_transforms} via \texttt{PIPELINE\_STAGES}: (1)~\texttt{parse\_event} maps Lichess event strings to Bullet/Blitz/Classical; (2)~\texttt{encode\_result} turns \texttt{1-0}, \texttt{0-1}, \texttt{1/2-1/2} into class labels; (3)--(4) date and clock features; (5)~\texttt{impute\_ratings} for missing values; (6) title flags; (7) opening and ECO family; (8)~\texttt{add\_historical\_pregame\_features} for rolling player form; (9) move-count summaries. I kept each step as a function so unit tests could target one transformation at a time.
+
+\subsubsection{Legacy extract.} 
+With \texttt{use\_elt=False}, \codecite{code_pgn_parser} and a streaming Parquet writer avoid Spark entirely. It is slower on full months but invaluable on a train journey with only Docker Desktop and 8\,GB RAM.
+
+\subsubsection{Feast split.}
+\codecite{code_feast_split} materialises pre-game features with timestamps respected, then applies an 80/20 chronological cut---no random shuffle, because random splits inflate metrics on temporal game data. Both partitions retain the same columns; I learned that lesson after an earlier split dropped sparse opening columns from the train set only.
+
+\subsubsection{Great Expectations.} \texttt{validate\_ge} invokes \codecite{code_ge_runner}. Failed expectations block \texttt{train\_model}. The GE Postgres container (\texttt{ge} profile) stores suite metadata; the actual run still happens via host CLI, which is slightly awkward but workable for coursework scale.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{dataValidation.pdf}
+  \caption{Pre-processing: validation, feature store, and train/test split under orchestration.}
+  \label{fig:preprocessing}
+\end{figure}
+
+CSV was tempting for quick plots but punishes wide schemas. In our case, Parquet's column pruning matters when move-level features widen the table. The pre-processing stage is where I spent the most calendar time, mostly on edge cases like unrated players, abandoned games, transpositions with missing ECO which do not show up in textbook datasets.
+
+\subsubsection{Storage layout after transform.} 
+Processed keys follow \texttt{lichess-processed/\{month\}/} with separate folders for star-schema tables and the wide export. DuckDB holds a single file per project root (path from config) referencing those Parquet globs. Retrieval for training is therefore two-step: analysts query SQL; the ML CLI reads the exported wide Parquet and Feast saved datasets under \texttt{artifacts/lichess\_features/}. I deliberately did not duplicate features in both DuckDB tables and Parquet more than necessary. Feast needs its registry, DuckDB needs SQL, sklearn needs a flat file.
+
+\subsubsection{Analytical processing angle.} 
+The brief asks how data supports ML and investigation. SQL answers distribution questions (rating histograms, opening popularity by month). The Pandas pipeline encodes domain knowledge (Bullet vs Blitz, title hierarchies). Feast enforces temporal discipline. Together they mean preprocessing is not a single script but a chain where each tool does one job well. When GE fails, I inspect which expectation broke---often a new Lichess header field appeared---and patch transforms before re-running the DAG.

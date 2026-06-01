@@ -1,0 +1,39 @@
+% GitHub icon and link helpers (requires fontawesome5, simpleicons, hyperref, biblatex)
+
+\DeclareRobustCommand{\githubicon}{%
+  \raisebox{-0.12ex}{\resizebox{!}{0.85em}{\simpleicon{github}}}%
+}
+
+\newcommand{\repo}[1]{%
+  \href{https://github.com/nabin2004/LichessOps/blob/main/#1}{%
+    \githubicon\;\nolinkurl{#1}}%
+}
+
+\DeclareRobustCommand{\githublink}[1]{%
+  \githubicon\ \mbox{GitHub:}\ \href{#1}{\nolinkurl{#1}}%
+}
+
+\newcommand{\codecite}[1]{\githubicon\,\cite{#1}}
+\newcommand{\githubparencite}[1]{\githubicon\,\parencite{#1}}
+
+\renewbibmacro*{url+urldate}{%
+  \ifkeyword{github}{%
+    \iffieldundef{url}{}{%
+      \setunit{\addspace}%
+      \githublink{\thefield{url}}%
+      \iffieldundef{urldate}{}{%
+        \setunit{\addspace}%
+        \printtext{accessed}\space\printfield{urldate}%
+      }%
+    }%
+  }{%
+    \iffieldundef{url}{}{%
+      \setunit{\addspace}%
+      \printfield{url}%
+      \iffieldundef{urldate}{}{%
+        \setunit{\addspace}%
+        \printtext{accessed}\space\printfield{urldate}%
+      }%
+    }%
+  }%
+}

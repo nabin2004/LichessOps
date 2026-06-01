@@ -1,0 +1,89 @@
+Data Analytics Pipeline: Implementation and Deployment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Exercise 2: Step 1
+Data Analytics / MLOPs pipeline for the storage and processing of data from one or more data sources to automate the production of ML Models.
+
+Introduction
+
+Pipeline Stage Discussions
+Data Ingestion
+The process of collecting, importing, and moving raw data from several data sources like web applications, databases, and IoT devices is called Data Ingestion. At this stage the input of data ingestion is the data of another new month. We have used the template URL for downloading the lichess database dump which is in the format of pgn.zst. This file format has been compressed using the Zstandard which is a compression tool developed by facebook.
+ The outputs of Data ingestion is the .pgn file format which is an standard format for representing the chess games in the chess domain. This decompressed file lands into MinIO object stores. 
+
+The use of MinIO is done by seeing the need for the storage of .pgn which is not a file format like csv, parquet but a object like format which can’t be directly stored to the columnar database for analytics. Staging the downloaded data into S3 gives us the timeframe and place to do further data validation like checksum validation which makes sure that the further expensive data operations are done on 100% valid and authentic data. 
+
+Here, we choose the ELT pipeline. ELT and ETL pipelines differ on where the data is transformed. Since, we operate from developmental platform and 
+
+During these stages, I have written the Configs Manager and Artifacts manager which are utility modular code used in each component, including the data ingestion component for managing the configuration and artifacts management. This helps in the clear separation of the configuration and artifacts. We are using simple python scripts, MinIO object stores and Airflow for orchestration.
+
+We use the Apache Airflow for orchestrating the data ingestion pipeline. Here, the role of orchestrator is to orchestrate the data ingestion pipeline which includes the extraction, transformation and storing the data. Our data source is Lichess open database, which is the entire database of Lichess published monthly on the Lichess platform.
+
+First the data is downloaded from lichess Database and stored into Minio Object store. Minio is an S3-compatible object store used for storing the  …………………………….
+After download the file is checked against the checksum validation which helps to check whether the file is corrupt or not. 
+
+If the file is found invalid it sends the alert message, else the orchestrator starts decompressing the compressed file. The compressed file then goes into the data preprocessing and gets stored in the DuckDB. DuckDB is the modern columnar database optimised for the columnar parquet data storage. 
+
+
+Data Pre-processing
+Data Pre-processing is the process of cleaning, transforming and organizing raw data into a structured format suitable for analysis and Machine Learning. This stage is considered significant and critical due to the fact that poor-quality data could affect the model development and also hinders the data analytics pipelines.
+
+Following are transformations done at this stage: 
+Ddd
+
+Doing these transformations were necessary at this stage. The output of the Data ingestion stage which provides a decompressed .pgn file needs to be stored as a Data analytics compatible file format. In our case Parquet is considered data analytics compatible. The reason behind choosing the parquet file format is due to its compatibility across several ML libraries and data transformation libraries like pandas, polars, and more.  CSV is the most used file format but it has …..  
+
+We use the Pandas library to perform data transformation, cleansing, and schema standardization tasks. The transformed datasets are then serialized in Apache Parquet format, a compressed columnar storage format optimized for analytical workloads. Storing data in Parquet improves storage efficiency, reduces I/O overhead, and enables faster column-based querying when loaded into the target analytical data store.
+
+
+Model development
+Data is successfully loaded into our DuckDB columnar database after which we were able to perform analytics on our datasets. Now at this stage we can use the same columnar database as our data source for model development. Here we do feature engineering and final training of a model to predict the game outcomes. Given the data of the user and the opening that particular user is thinking of using we can highlight the game outcome. Using this data chess players can decide which openings to use. This feature also helps chess players to know which opening is considered weak for certain levels of chess. Players use it for winning the match or improving their match.
+This is a multi-class classification task classifying the game prediction. The possible output for our model is win, lose, draw which are represented as 1, 0, ½ . 
+ 
+Model Deployment
+Model Monitoring
+
+Reflective discussions
+Conclusion
+

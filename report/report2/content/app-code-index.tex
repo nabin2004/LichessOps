@@ -1,0 +1,42 @@
+\section{Code index}
+\label{app:code-index}
+
+Table~\ref{tab:code-index} lists major implementation files with GitHub links (\githubicon). All paths are relative to repository root on branch \texttt{main}.
+
+{\small
+\begin{longtable}{@{}p{0.36\linewidth}p{0.52\linewidth}@{}}
+\toprule
+\textbf{File} & \textbf{Description} \\
+\midrule
+\endhead
+\repo{libs/shared/config_loader.py} & YAML config merge \\
+\repo{libs/shared/artifact_manager.py} & Artefact path resolution \\
+\repo{libs/shared/s3.py} & MinIO/S3 client helpers \\
+\repo{libs/shared/storage_config.py} & DuckDB and S3 URI mapping \\
+\repo{libs/shared/logger.py} & Rotating file logging \\
+\repo{services/airflow/dags/lichess_monthly_ingestion.py} & Monthly orchestration DAG \\
+\repo{packages/lichess_data/src/lichess_data/extract/lichess_downloader.py} & Shard download and checksum \\
+\repo{packages/lichess_data/src/lichess_data/validate/checks.py} & SHA256 validation \\
+\repo{packages/lichess_data/src/lichess_data/load/upload.py} & Raw upload to MinIO \\
+\repo{services/minio/docker-compose.yml} & Object store and buckets \\
+\repo{packages/lichess_data/src/lichess_data/spark/transform.py} & Spark star-schema transform \\
+\repo{packages/lichess_data/src/lichess_data/load/duckdb_sync.py} & Parquet $\rightarrow$ DuckDB sync \\
+\repo{packages/lichess_data/src/lichess_data/preprocessing/transforms.py} & Pandas feature stages \\
+\repo{packages/lichess_data/src/lichess_data/extract/pgn_parser.py} & Legacy PGN parser \\
+\repo{packages/lichess_features/src/lichess_features/split.py} & Feast split and temporal cut \\
+\repo{packages/lichess_data/src/lichess_data/validate/ge_runner.py} & Great Expectations runner \\
+\repo{packages/lichess_models/src/lichess_models/train.py} & Hyperparameter search training \\
+\repo{packages/lichess_models/src/lichess_models/features.py} & Sklearn preprocessor \\
+\repo{packages/lichess_models/src/lichess_models/dataset.py} & Train/test loading \\
+\repo{packages/lichess_models/src/lichess_models/evaluate.py} & Hold-out metrics \\
+\repo{packages/lichess_models/src/lichess_models/register.py} & MLflow registration \\
+\repo{services/mlflow/docker-compose.yml} & MLflow tracking server \\
+\repo{packages/lichess_serving/src/lichess_serving/app.py} & FastAPI predict API \\
+\repo{packages/lichess_serving/src/lichess_serving/schemas.py} & API request/response models \\
+\repo{services/prometheus/prometheus.yml} & Metrics scrape config \\
+\repo{services/evidently/src/app_fastapi/main.py} & Drift report API \\
+\bottomrule
+\caption{Implementation code index with GitHub links.}
+\label{tab:code-index}
+\end{longtable}
+}

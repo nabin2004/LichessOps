@@ -1,0 +1,10 @@
+% \chapter{Initial Attempt at Pipeline Implementation}
+% \label{ch:implementation}
+
+% \input{report2/content/01-intro}
+
+% \section{Evidence and reproducibility}
+
+% The implementation lives in the public \textbf{LichessOps} repository \githubparencite{lichessops_repo}. Services are orchestrated with Docker Compose (MinIO, Airflow, Spark, DuckDB, MLflow, Prometheus, Grafana, and supporting databases). The monthly ingestion DAG can be triggered from the Airflow UI or by running the \texttt{lichess-data} CLI with the same arguments the DAG passes. Processed Parquet and DuckDB tables, Feast feature splits, MLflow runs, and the FastAPI serving endpoint provide traceable evidence for each pipeline stage.
+
+% Appendix~\ref{app:code-index} indexes the main modules cited in Chapters~\ref{ch:final-pipeline-planning} and~\ref{ch:implementation}. Markers can follow any claim in those chapters to a concrete file path on GitHub.

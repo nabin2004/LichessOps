@@ -19,3 +19,9 @@ __pycache__/
 services/minio/data/
 services/minio/minio.license
 services/airflow/logs/
+
+build/
+.egg-info/
+dist/
+*.egg
+*.egg-info

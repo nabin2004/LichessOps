@@ -1,0 +1,98 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[british]{babel}
+\usepackage[a4paper,margin=25mm]{geometry}
+\usepackage{microtype}
+\usepackage{setspace}
+\onehalfspacing
+
+\usepackage{graphicx}
+\graphicspath{{../figures/}}
+
+\usepackage{booktabs,tabularx,longtable}
+\usepackage{enumitem}
+
+\usepackage[hidelinks,unicode]{hyperref}
+\hypersetup{
+  pdfauthor={Nabin Oli},
+  pdftitle={CMP6230 Task 2 - MLOps Implementation Log},
+}
+
+\usepackage{csquotes}
+\usepackage[backend=biber,style=authoryear]{biblatex}
+\addbibresource{references.bib}
+\input{github}
+
+% Metadata
+\newcommand{\UniName}{Birmingham City University}
+\newcommand{\StudentName}{Nabin Oli}
+\newcommand{\StudentID}{23189629}
+\newcommand{\DegreeName}{BSc (Hons) Computer and Data Science}
+\newcommand{\ModuleCode}{CMP6230}
+\newcommand{\TaskName}{Coursework Task 2}
+\newcommand{\ReportTitle}{Data Analytics Pipeline: Implementation and Deployment}
+\newcommand{\ReportSubtitle}{Lichess Open Database --- MLOps pipeline implementation}
+\newcommand{\ReportType}{Log Report}
+\newcommand{\AcademicYear}{Academic Year 2024\,/\,25}
+
+\IfFileExists{build/bodywordcount.tex}{%
+  \input{build/bodywordcount.tex}%
+}{%
+  \providecommand{\BodyWordCount}{?}%
+}
+
+\title{\ReportTitle}
+\author{\StudentName}
+\date{\today}
+
+\begin{document}
+
+%TC:ignore
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+  {\large \UniName\par}
+  \vspace{2cm}
+  {\large \MakeUppercase{\ReportType}\par}
+  \vspace{1.5cm}
+  {\LARGE\bfseries \ReportTitle\par}
+  \vspace{0.5cm}
+  {\large \ReportSubtitle\par}
+  \vspace{0.35cm}
+  {\normalsize\textit{Main body: \BodyWordCount\ words}\par}
+  \vspace{0.35cm}
+  {\large \ModuleCode\quad\textemdash\quad\TaskName\par}
+  \vfill
+  \begin{tabular}{rl}
+    Student:            & \StudentName   \\[0.4em]
+    Student ID:        & \StudentID     \\[0.4em]
+    Programme of study: & \DegreeName    \\
+  \end{tabular}
+  \vspace{2cm}
+  {\footnotesize \AcademicYear\quad\textperiodcentered\quad\today\par}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+%TC:endignore
+
+\input{content/01-intro}
+\input{content/02-shared}
+\input{content/03-ingestion}
+\input{content/04-preprocessing}
+\input{content/05-model-dev}
+\input{content/06-deployment}
+\input{content/07-monitoring}
+\input{content/08-reflection}
+\input{content/09-conclusion}
+
+%TC:ignore
+\appendix
+\input{content/app-code-index}
+
+\printbibliography[heading=bibintoc,title={References}]
+%TC:endignore
+
+\end{document}

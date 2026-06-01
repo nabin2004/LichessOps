@@ -1,21 +1,28 @@
 [project]
-name = "lichess-features"
+name = "lichess-models"
 version = "0.1.0"
-description = "Add your description here"
+description = "Train and evaluate Lichess game outcome prediction models"
 readme = "README.md"
 authors = [
     { name = "Nabin Oli", email = "olinabin2004@gmail.com" }
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "joblib>=1.4.2",
     "lichess-data",
+    "lichess-libs",
+    "numpy>=2.4.6",
+    "pandas>=3.0.3",
+    "pyarrow>=24.0.0",
+    "pyyaml>=6.0.2",
+    "scikit-learn>=1.8.0",
 ]
 
 [dependency-groups]
 dev = ["pytest>=8.0"]
 
 [project.scripts]
-lichess-features = "lichess_features:main"
+lichess-models = "lichess_models:main"
 
 [build-system]
 requires = ["uv_build>=0.11.6,<0.12.0"]
@@ -23,3 +30,4 @@ build-backend = "uv_build"
 
 [tool.uv.sources]
 lichess-data = { workspace = true }
+lichess-libs = { workspace = true }

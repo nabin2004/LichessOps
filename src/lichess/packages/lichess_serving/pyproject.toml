@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.115.0",
+    "lichess-libs",
     "lichess-models",
     "prometheus-fastapi-instrumentator>=8.0.0",
     "pydantic>=2.10.0",
@@ -25,3 +26,4 @@ build-backend = "uv_build"
 
 [tool.uv.sources]
 lichess-models = { workspace = true }
+lichess-libs = { workspace = true }

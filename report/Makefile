@@ -1,12 +1,16 @@
 # CMP6230 report — build PDF into build/ (see .latexmkrc)
-MAIN   := main.tex
-LATEXMK := latexmk
+MAIN      := main.tex
+FORMATIVE := main-formative.tex
+LATEXMK   := latexmk
 
-.PHONY: pdf watch clean distclean
+.PHONY: pdf pdf-formative watch clean distclean
 
 pdf:
-	./scripts/gen-body-wordcount.sh
+	./scripts/gen-body-wordcount.sh $(MAIN)
 	$(LATEXMK) -pdf -interaction=nonstopmode $(MAIN)
+
+pdf-formative:
+	./scripts/build-pdf.sh $(FORMATIVE)
 
 watch:
 	$(LATEXMK) -pdf -pvc -interaction=nonstopmode $(MAIN)

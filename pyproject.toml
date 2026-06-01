@@ -20,4 +20,4 @@ dependencies = [
 
 
 [tool.uv.workspace]
-members = ["packages/*"]
+members = ["src/lichess/packages/*", "libs"]

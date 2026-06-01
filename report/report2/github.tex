@@ -1,0 +1,45 @@
+% GitHub icon and link helpers (requires fontawesome5 + hyperref)
+
+\usepackage{simpleicons}
+
+\DeclareRobustCommand{\githubicon}{%
+  \raisebox{-0.12ex}{\resizebox{!}{0.85em}{\simpleicon{github}}}%
+}
+
+% Inline repository path link (appendix table, narrative)
+\newcommand{\repo}[1]{%
+  \href{https://github.com/nabin2004/LichessOps/blob/main/#1}{%
+    \githubicon\;\nolinkurl{#1}}%
+}
+
+% Bibliography: GitHub source URL with icon (robust for biblatex)
+\DeclareRobustCommand{\githublink}[1]{%
+  \githubicon\ \mbox{GitHub:}\ \href{#1}{\nolinkurl{#1}}%
+}
+
+% In-text citations of GitHub-hosted code
+\newcommand{\codecite}[1]{\githubicon\,\cite{#1}}
+\newcommand{\githubparencite}[1]{\githubicon\,\parencite{#1}}
+
+% Bibliography: GitHub URLs with icon (repository + external GitHub docs)
+\renewbibmacro*{url+urldate}{%
+  \ifkeyword{github}{%
+    \iffieldundef{url}{}{%
+      \setunit{\addspace}%
+      \githublink{\thefield{url}}%
+      \iffieldundef{urldate}{}{%
+        \setunit{\addspace}%
+        \printtext{accessed}\space\printfield{urldate}%
+      }%
+    }%
+  }{%
+    \iffieldundef{url}{}{%
+      \setunit{\addspace}%
+      \printfield{url}%
+      \iffieldundef{urldate}{}{%
+        \setunit{\addspace}%
+        \printtext{accessed}\space\printfield{urldate}%
+      }%
+    }%
+  }%
+}

@@ -1,0 +1,27 @@
+\section{Model deployment}
+\label{sec:deployment}
+
+\subsection{What}
+
+Deployment here means exposing a trained model over HTTP so another service (or a human with curl) can request predictions without rerunning training. The FastAPI application \parencite{fastapi} in \codecite{code_serving_app} serves \texttt{/health} and \texttt{/predict}. At startup it resolves a model URI \texttt{models:/lichess-outcome-predictor/Staging} from the MLflow registry.
+
+\subsection{Why}
+
+Serialising with \texttt{joblib} is simple. Registering the same object in MLflow ties the running API to an experiment lineage. When April's retrain beats March, It promotes a new version to staging.
+
+\subsection{How}
+
+% \texttt{\_load\_model} runs in the FastAPI lifespan hook. It branches on whether \texttt{MODEL\_URI} ends with \texttt{.joblib} or points at MLflow; the latter downloads the sklearn flavour through the tracking API. Request bodies follow \codecite{code_serving_schemas}: rating, title, time control, opening fields in \texttt{PredictRequest}, with class probabilities and a human-readable outcome label in \texttt{PredictResponse}. \codecite{code_features} supplies \texttt{build\_inference\_row} so training and serving share encoding logic---I fixed a nasty mismatch here once when one-hot columns diverged.
+
+I start the server with \texttt{uv run lichess-serving} from the repo root after exporting \texttt{MODEL\_URI} and MLflow tracking variables. The CLI in \repo{packages/lichess_serving/src/lichess_serving/cli.py} wraps Uvicorn. Containerising is straightforward (slim Python image, same env vars) but left out of this submission to save integration time.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{deployment.pdf}
+  \caption{Deployment: promote model from MLflow, serve via FastAPI.}
+  \label{fig:deployment}
+\end{figure}
+
+A minimal check I repeat after each promote: \texttt{GET /health} returns loaded=true, then \texttt{POST /predict} with a 1800-rated blitz game and the Sicilian Defence headers I used in tests. If probabilities sum to roughly one and the model gauge flips to 1, the deploy is good enough for demo purposes.
+
+% \textbf{Serialisation and network access.} The brief asks how models are stored and retrieved. On disk, \texttt{joblib} captures the fitted \texttt{Pipeline}; in MLflow, the same object is versioned with metrics and parameters. Over the network, JSON requests map to Python dicts, pass through the shared preprocessor, and return probabilities---no batch file hand-off. Docker would add an extra layer (image digest, published port 8080, health check in Compose) without changing that contract; I documented the host-run path because it is what I demo today.

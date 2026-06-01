@@ -23,7 +23,10 @@
   \begin{tabular}{rl}
     Student:            & \StudentName   \\[0.4em]
     Student ID:        & \StudentID     \\[0.4em]
-    Programme of study: & \DegreeName    \\
+    Programme of study: & \DegreeName    \\[0.4em]
+    \ifx\CoordinatorName\empty\else
+    Lecturer: & \CoordinatorName \\
+    \fi
   \end{tabular}
 
   \vspace{2cm}
