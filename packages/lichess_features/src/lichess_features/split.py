@@ -72,6 +72,18 @@ def _retrieve_partition(store, entity_df: pd.DataFrame, feature_service_name: st
     return job.to_df()
 
 
+def _ensure_result_label(features_df: pd.DataFrame, full_df: pd.DataFrame) -> pd.DataFrame:
+    """Restore ``result_label`` when Feast retrieval omits it from the feature view."""
+    if "result_label" in features_df.columns or "result_label" not in full_df.columns:
+        return features_df
+    labels = full_df[list(ENTITY_COLUMNS) + ["result_label"]].drop_duplicates(
+        subset=list(ENTITY_COLUMNS)
+    )
+    merged = features_df.merge(labels, on=list(ENTITY_COLUMNS), how="left")
+    log.info("Merged result_label from features parquet (%d rows)", len(merged))
+    return merged
+
+
 def _register_saved_dataset(
     store,
     df: pd.DataFrame,
@@ -93,6 +105,7 @@ def _register_saved_dataset(
         from_=job,
         name=name,
         storage=SavedDatasetFileStorage(path=str(parquet_path)),
+        allow_overwrite=True,
     )
     log.info("Registered Feast SavedDataset %r → %s", name, parquet_path)
 
@@ -137,6 +150,7 @@ def run_split(
     with feast_source_path(features_path):
         store = get_store()
         features_df = _retrieve_partition(store, entity_df, feature_service_name)
+        features_df = _ensure_result_label(features_df, full_df)
         train_df, test_df = temporal_split(features_df, test_size=test_size)
 
         train_df.to_parquet(train_path, index=False)

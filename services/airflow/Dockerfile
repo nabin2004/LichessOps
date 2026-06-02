@@ -19,6 +19,8 @@ RUN python -m pip install --no-cache-dir uv \
         /opt/airflow/project/packages/lichess_data \
         /opt/airflow/project/packages/lichess_models \
     && uv pip install --no-cache-dir --no-deps feast==0.46.0 \
+    && uv pip install --no-cache-dir --no-deps \
+        /opt/airflow/project/packages/lichess_features \
     && uv pip install --no-cache-dir \
         "click>=7,<9" "colorama>=0.3.9" "dask>=2024.1.0" "dill~=0.3.0" "protobuf>=4.24.0" \
         "Jinja2>=2,<4" jsonschema mmh3 "pydantic>=2" "pygments>=2.12,<3" \

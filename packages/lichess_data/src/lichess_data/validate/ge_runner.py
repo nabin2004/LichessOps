@@ -39,7 +39,7 @@ class GEValidationResult:
 
 def _validate_dataframe(
     df: pd.DataFrame,
-    apply_expectations: Callable,
+    apply_expectations: Callable[[Any, pd.DataFrame], None],
 ) -> GEValidationResult:
     context = gx.get_context(mode="ephemeral")
     datasource = context.data_sources.add_pandas("pandas")
@@ -47,23 +47,31 @@ def _validate_dataframe(
     batch_definition = asset.add_batch_definition_whole_dataframe("validation_batch")
     batch = batch_definition.get_batch(batch_parameters={"dataframe": df})
     validator = context.get_validator(batch=batch)
-    apply_expectations(validator)
+    apply_expectations(validator, df)
     result = validator.validate()
     return GEValidationResult(ok=result.success, details=result.to_json_dict())
 
 
-def _apply_processed_expectations(validator) -> None:
+def _apply_processed_expectations(validator, df: pd.DataFrame) -> None:
     validator.expect_table_row_count_to_be_between(min_value=1)
-    validator.expect_table_columns_to_contain_set(PROCESSED_REQUIRED_COLUMNS)
+    validator.expect_table_columns_to_match_set(
+        column_set=PROCESSED_REQUIRED_COLUMNS,
+        exact_match=False,
+    )
     for col in PROCESSED_REQUIRED_COLUMNS:
-        validator.expect_column_values_to_not_be_null(col)
+        if col in df.columns:
+            validator.expect_column_values_to_not_be_null(col)
 
 
-def _apply_preprocessed_expectations(validator) -> None:
+def _apply_preprocessed_expectations(validator, df: pd.DataFrame) -> None:
     validator.expect_table_row_count_to_be_between(min_value=1)
-    validator.expect_table_columns_to_contain_set(PREPROCESSED_REQUIRED_COLUMNS)
+    validator.expect_table_columns_to_match_set(
+        column_set=PREPROCESSED_REQUIRED_COLUMNS,
+        exact_match=False,
+    )
     for col in PREPROCESSED_REQUIRED_COLUMNS:
-        validator.expect_column_values_to_not_be_null(col)
+        if col in df.columns:
+            validator.expect_column_values_to_not_be_null(col)
 
 
 def validate_ge_processed_parquet(

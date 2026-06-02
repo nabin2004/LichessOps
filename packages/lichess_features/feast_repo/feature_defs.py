@@ -7,6 +7,7 @@ from datetime import timedelta
 
 from feast import Entity, FeatureService, FeatureView, Field, FileSource
 from feast.types import Float32, Int64, String
+from feast.value_type import ValueType
 
 from lichess_libs.shared import load_config
 
@@ -19,12 +20,13 @@ ttl_days = int(feast_cfg.get("ttl_days", 3650))
 
 pregame_source = FileSource(
 	path=source_path,
-	event_timestamp_column="utc_datetime",
+	timestamp_field="utc_datetime",
 )
 
 game = Entity(
 	name="game_id",
 	join_keys=["site"],
+	value_type=ValueType.STRING,
 	description="Lichess game URL",
 )
 
@@ -33,6 +35,7 @@ pregame_features = FeatureView(
 	entities=[game],
 	ttl=timedelta(days=ttl_days),
 	schema=[
+		Field(name="site", dtype=String),
 		Field(name="white_elo", dtype=Float32),
 		Field(name="black_elo", dtype=Float32),
 		Field(name="white_rating_diff", dtype=Float32),

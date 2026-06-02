@@ -18,6 +18,8 @@ Schedule: monthly on the 1st at 03:00 UTC (`0 3 1 * *`), `catchup=False`.
 | `verify_checksum` | `true` | Validate downloaded shard checksum during download. |
 | `skip_existing` | `true` | Skip re-download if the shard already exists and is valid. |
 | `test_size` | `0.2` | Fraction for temporal test split in Feast (`lichess-features split`). |
+
+Feast `FileSource` in `lichess_features/feast_repo` must use `timestamp_field="utc_datetime"` (Feast 0.46 ignores `event_timestamp_column`).
 | `run_validation` | `true` | Run checksum validation and Great Expectations checks. |
 | `run_training` | `true` | Run `lichess-models train` after split. |
 | `use_elt` | `true` | When true, run MinIO upload → spark-transform → duckdb-sync instead of legacy `extract`. |

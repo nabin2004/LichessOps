@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from lichess_features.split import temporal_split
+from lichess_features.split import ENTITY_COLUMNS, _ensure_result_label, temporal_split
 
 
 @pytest.fixture
@@ -22,6 +22,15 @@ def ordered_entity_df() -> pd.DataFrame:
             "result_label": [1, 0, -1],
             "white_elo": [1500.0, 1600.0, 1700.0],
         }
+    )
+
+
+def test_ensure_result_label_merges_from_full_df(ordered_entity_df: pd.DataFrame) -> None:
+    retrieved = ordered_entity_df.drop(columns=["result_label"])
+    merged = _ensure_result_label(retrieved, ordered_entity_df)
+    assert "result_label" in merged.columns
+    pd.testing.assert_series_equal(
+        merged["result_label"], ordered_entity_df["result_label"], check_names=False
     )
 
 
@@ -68,8 +77,8 @@ def test_run_split_writes_parquet_and_registers_datasets(
     mock_get_store.return_value = store
 
     def fake_retrieve(*args, **kwargs):
-        entity_df = kwargs["entity_df"] if "entity_df" in kwargs else args[0]
-        retrieved = entity_df.merge(
+        entity_df = kwargs["entity_df"] if "entity_df" in kwargs else args[1]
+        retrieved = entity_df[list(ENTITY_COLUMNS)].merge(
             ordered_entity_df[["site", "white_elo"]],
             on="site",
             how="left",
@@ -88,6 +97,15 @@ def test_run_split_writes_parquet_and_registers_datasets(
     assert test_path == out_dir / "test.parquet"
     assert train_path.exists()
     assert test_path.exists()
-    assert len(pd.read_parquet(train_path)) == 2
+    train_df = pd.read_parquet(train_path)
+    assert len(train_df) == 2
     assert len(pd.read_parquet(test_path)) == 1
+    assert "result_label" in train_df.columns
     assert mock_register.call_count == 2
+
+
+def test_pregame_source_uses_timestamp_field() -> None:
+    defs_path = Path(__file__).resolve().parents[1] / "feast_repo" / "feature_defs.py"
+    source = defs_path.read_text(encoding="utf-8")
+    assert 'timestamp_field="utc_datetime"' in source
+    assert "event_timestamp_column" not in source
