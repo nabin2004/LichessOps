@@ -10,14 +10,13 @@ GE validation runs after extraction and preprocessing to verify basic data quali
 - Preprocessed features (full history): column presence, non-null checks for key derived fields, row count > 0.
 - Preprocessed train/test: column presence, non-null checks for key derived fields, row count > 0.
 
-The checks are defined and executed in the `lichess_data.validate` package and persisted to a local GE context under `packages/lichess_data/great_expectations`.
+The checks are defined and executed in the `lichess_data.validate` package. The current runner uses an **ephemeral** GE context (no checked-in context directory required).
 
 ## Where it lives
 
 - Runner: `packages/lichess_data/src/lichess_data/validate/ge_runner.py`
 - CLI entrypoint: `packages/lichess_data/src/lichess_data/cli.py`
 - Default config: `packages/lichess_data/configs/default.yaml`
-- Context root: `packages/lichess_data/great_expectations/`
 
 ## CLI usage
 
@@ -87,13 +86,10 @@ If a file is missing or a required column is absent, validation fails.
 Defaults live in `packages/lichess_data/configs/default.yaml`:
 
 ```yaml
-great_expectations:
-  context_root: great_expectations
-  processed_suite: processed_minimal
-  preprocessed_suite: preprocessed_minimal
+great_expectations: {}
 ```
 
-`context_root` is relative to `packages/lichess_data/` unless an absolute path is provided.
+The current implementation runs GE checks in-process and returns a JSON-like result object; you can extend required columns or add new expectations directly in `ge_runner.py`.
 
 ## Airflow integration
 

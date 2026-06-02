@@ -1,4 +1,4 @@
-from libs.shared import setup_logging
+from lichess_libs.shared import setup_logging
 
 
 def main():

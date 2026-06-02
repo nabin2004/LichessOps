@@ -82,9 +82,9 @@ packages/lichess_data/
 └── src/lichess_data/
     ├── cli.py                 # subcommands: extract, preprocess, validate (optional grouping)
     ├── extract/
-    │   ├── parser.py          # parse_game(), safe_int() from notebook 01
+    │   ├── pgn_parser.py       # PGN parsing helpers
     │   ├── lichess_downloader.py  # monthly HTTPS .pgn.zst download + SHA256
-    │   └── writer.py          # streamed Parquet batching
+    │   └── parquet_stream_writer.py  # streamed Parquet batching
     ├── preprocessing/
     │   ├── transforms.py      # port logic from notebook 03
     │   └── pipeline.py        # orchestrates transforms in order
@@ -115,7 +115,6 @@ Training binaries, chronological splits, and experiment tracking.
 packages/lichess_models/
 ├── configs/default.yaml       # model family, hyperparameters, split policy
 └── src/lichess_models/
-    ├── split.py               # chronological TimeSeriesSplit or equivalent
     ├── train.py
     ├── evaluate.py
     └── register.py            # MLflow model registry helpers
@@ -136,7 +135,7 @@ packages/lichess_serving/
 
 ### Cross-cutting conventions
 
-1. **Configuration** — Prefer `[load_config(<component>)](./config-loading.md)` where `<component>` is the package directory name. Move any stray keys from `[packages/lichess_data/src/lichess_data/extract/config.yaml](../packages/lichess_data/src/lichess_data/extract/config.yaml)` into `packages/<component>/configs/default.yaml` and retire ad-hoc paths once wiring is proven.
+1. **Configuration** — Prefer `[load_config(<component>)](./config-loading.md)` where `<component>` is the package directory name. Keep config under `packages/<component>/configs/default.yaml`.
 2. **Outputs** — Write pipeline outputs via `[get_artifact_path` / `get_run_dir](./artifact-management.md)` instead of notebook-style absolute filesystem paths.
 3. **Local data** — Under `data/raw/` (or MinIO buckets in Docker phases). Gitignored blobs stay out of version control; keep small samples documented in README where appropriate.
 
@@ -169,7 +168,7 @@ Application code can resolve deterministic paths with:
 ```python
 from pathlib import Path
 
-from libs.shared import get_artifact_path, load_config
+from lichess_libs.shared import get_artifact_path, load_config
 
 cfg = load_config("lichess_data")
 out_rel = cfg["extract"]["output_subpath"]

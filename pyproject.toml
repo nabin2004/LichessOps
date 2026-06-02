@@ -18,6 +18,20 @@ dependencies = [
     "tqdm>=4.67.3",
 ]
 
+[dependency-groups]
+dev = [
+    "lichess-data",
+    "lichess-features",
+    "lichess-models",
+    "lichess-serving",
+]
+
+[tool.uv.sources]
+lichess-data = { workspace = true }
+lichess-features = { workspace = true }
+lichess-models = { workspace = true }
+lichess-serving = { workspace = true }
+
 
 [tool.uv.workspace]
-members = ["src/lichess/packages/*", "libs"]
+members = ["packages/*", "libs"]

@@ -51,9 +51,9 @@ def _run_cmd(cmd: list[str]) -> None:
     package_paths = os.pathsep.join(
         [
             "/opt/airflow/project/libs",
-            "/opt/airflow/project/src/lichess/packages/lichess_data/src",
-            "/opt/airflow/project/src/lichess/packages/lichess_features/src",
-            "/opt/airflow/project/src/lichess/packages/lichess_models/src",
+            "/opt/airflow/project/packages/lichess_data/src",
+            "/opt/airflow/project/packages/lichess_features/src",
+            "/opt/airflow/project/packages/lichess_models/src",
         ]
     )
     existing_pythonpath = env.get("PYTHONPATH", "").strip()
