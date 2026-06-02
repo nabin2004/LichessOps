@@ -30,7 +30,7 @@
 # AIRFLOW_PROJ_DIR             - Base path to which all the Airflow files will be volumed.
 #                                Default: ./services/airflow
 # AIRFLOW_PROJECT_DIR          - Base path to the repo root (for running package code).
-#                                Default: .
+#                                Default: ../.. (repo root relative to this compose file)
 # Those configurations are useful mostly in case of standalone testing/running Airflow in test/try-out mode
 #
 # _AIRFLOW_WWW_USER_USERNAME   - Username for the administrator account (if requested).
@@ -51,8 +51,10 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.6}
-  # build: .
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.6}
+  build:
+    context: ${AIRFLOW_PROJECT_DIR:-../..}
+    dockerfile: services/airflow/Dockerfile
   env_file:
     - ${ENV_FILE_PATH:-.env}
   environment:
@@ -70,7 +72,7 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
-    PYTHONPATH: /opt/airflow/project:/opt/airflow/project/libs:/opt/airflow/project/packages/lichess_data/src:/opt/airflow/project/packages/lichess_features/src:/opt/airflow/project/packages/lichess_models/src
+    PYTHONPATH: /opt/airflow/project:/opt/airflow/project/libs/src:/opt/airflow/project/packages/lichess_data/src:/opt/airflow/project/packages/lichess_features/src:/opt/airflow/project/packages/lichess_models/src
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
@@ -86,7 +88,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-./services/airflow}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-./services/airflow}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-./services/airflow}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJECT_DIR:-.}:/opt/airflow/project
+    - ${AIRFLOW_PROJECT_DIR:-../..}:/opt/airflow/project
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on

@@ -51,10 +51,12 @@ touch services/airflow/.env
 Set these keys if you want explicit paths:
 
 ```bash
-AIRFLOW_PROJ_DIR=./services/airflow
-AIRFLOW_PROJECT_DIR=.
+AIRFLOW_PROJ_DIR=.
+AIRFLOW_PROJECT_DIR=../..
 LICHESS_STORAGE_BACKEND=minio
 ```
+
+Paths are relative to `services/airflow/` (where the Airflow compose file lives). `AIRFLOW_PROJECT_DIR=../..` mounts the repo root at `/opt/airflow/project`, which editable package installs expect.
 
 3. Install Python deps into the Airflow image. For local dev, set `_PIP_ADDITIONAL_REQUIREMENTS` in `services/airflow/.env` or a root `.env`:
 
@@ -102,6 +104,6 @@ See [Great Expectations validation](./great-expectations.md) for details.
 ## Troubleshooting
 
 - If Airflow does not see DAGs, confirm `AIRFLOW_PROJ_DIR=./services/airflow` and restart the stack.
-- If imports fail, confirm `AIRFLOW_PROJECT_DIR=.` and the `PYTHONPATH` setting in the compose file.
+- If imports fail, confirm `AIRFLOW_PROJECT_DIR=../..` in `services/airflow/.env` so `/opt/airflow/project/packages/` exists in workers, then restart the stack.
 - If ELT upload fails, ensure MinIO (`--profile core`) is running and reachable from workers at `http://minio:9000`.
 - If dependencies are missing, use `_PIP_ADDITIONAL_REQUIREMENTS` or a custom Airflow image.

@@ -32,6 +32,21 @@ def get_store() -> FeatureStore:
 	return FeatureStore(repo_path=str(_feature_repo_path()))
 
 
+def _apply_repo_definitions(store: FeatureStore) -> None:
+	"""Register all objects from ``feast_repo`` (Feast 0.46+ requires explicit objects)."""
+	from feast.repo_operations import extract_objects_for_apply_delete, parse_repo
+
+	repo = parse_repo(_feature_repo_path())
+	objects_to_apply, objects_to_delete, _, _ = extract_objects_for_apply_delete(
+		store.project, store.registry, repo
+	)
+	store.apply(
+		objects_to_apply,
+		objects_to_delete=objects_to_delete,
+		partial=False,
+	)
+
+
 @contextmanager
 def feast_source_path(path: str | Path):
 	"""Temporarily point Feast FileSource at ``path`` for apply/retrieval."""
@@ -51,12 +66,11 @@ def apply_with_source(path: str | Path) -> None:
 	"""Apply feature definitions using ``path`` as the offline FileSource."""
 	with feast_source_path(path):
 		store = get_store()
-		store.apply()
+		_apply_repo_definitions(store)
 
 
 def apply() -> None:
-	store = get_store()
-	store.apply()
+	_apply_repo_definitions(get_store())
 
 
 def materialize_days(days_back: int = 30) -> None:

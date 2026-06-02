@@ -84,8 +84,8 @@ DAGs live under [services/airflow/dags](airflow/dags). The `lichess_monthly_inge
 Recommended environment variables (set in `services/airflow/.env` or a root `.env`):
 
 ```bash
-AIRFLOW_PROJ_DIR=./services/airflow
-AIRFLOW_PROJECT_DIR=.
+AIRFLOW_PROJ_DIR=.
+AIRFLOW_PROJECT_DIR=../..
 _PIP_ADDITIONAL_REQUIREMENTS=chess==1.10.0 zstandard==0.23.0 pandas==2.2.2 pyarrow==16.1.0
 ```
 

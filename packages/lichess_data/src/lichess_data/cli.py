@@ -14,7 +14,10 @@ from lichess_libs.shared import get_artifact_path, load_config
 from lichess_data.extract import lichess_downloader as ld
 from lichess_data.extract.parquet_stream_writer import ParquetStreamWriter
 from lichess_data.extract.pgn_parser import PGNParser
+from lichess_data.load.duckdb_sync import sync_month
+from lichess_data.load.upload import upload_raw_shard
 from lichess_data.preprocessing import run_pipeline
+from lichess_data.spark.run import run_transform
 from lichess_data.validate import (
     validate_checksum_file,
     validate_ge_preprocessed_dir,
@@ -156,6 +159,26 @@ def main(argv: list[str] | None = None) -> int:
         help="Exit non-zero if Great Expectations validation fails",
     )
 
+    up = sub.add_parser("upload", help="Upload a downloaded shard to object storage")
+    _add_month_args(up)
+
+    sp = sub.add_parser(
+        "spark-transform",
+        help="Build star schema and wide tables (writes to MinIO by default)",
+    )
+    _add_month_args(sp)
+    sp.add_argument(
+        "--local",
+        action="store_true",
+        help="Write outputs under artifacts/ instead of object storage",
+    )
+
+    dd = sub.add_parser(
+        "duckdb-sync",
+        help="Load processed Parquet into DuckDB and export ML-ready wide parquet",
+    )
+    _add_month_args(dd)
+
     args = parser.parse_args(argv)
     cfg = load_config("lichess_data")
 
@@ -169,6 +192,12 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_validate(args, cfg)
     if args.cmd == "validate-ge":
         return _cmd_validate_ge(args, cfg)
+    if args.cmd == "upload":
+        return _cmd_upload(args, cfg)
+    if args.cmd == "spark-transform":
+        return _cmd_spark_transform(args, cfg)
+    if args.cmd == "duckdb-sync":
+        return _cmd_duckdb_sync(args, cfg)
 
     return 2
 
@@ -375,6 +404,38 @@ def _cmd_validate_ge(args: argparse.Namespace, cfg: dict) -> int:
     if ok or not args.strict:
         return 0
     return 1
+
+
+def _cmd_upload(args: argparse.Namespace, cfg: dict) -> int:
+    month = _resolve_month(args)
+    if month is None:
+        print("error: specify --month/--previous-month", flush=True)
+        return 2
+    uri = upload_raw_shard(month, config=cfg)
+    if uri:
+        print(uri)
+    return 0
+
+
+def _cmd_spark_transform(args: argparse.Namespace, cfg: dict) -> int:
+    month = _resolve_month(args)
+    if month is None:
+        print("error: specify --month/--previous-month", flush=True)
+        return 2
+    outputs = run_transform(month, config=cfg, local=bool(args.local))
+    for _, out in outputs.items():
+        print(out)
+    return 0
+
+
+def _cmd_duckdb_sync(args: argparse.Namespace, cfg: dict) -> int:
+    month = _resolve_month(args)
+    if month is None:
+        print("error: specify --month/--previous-month", flush=True)
+        return 2
+    out_path = sync_month(month, config=cfg)
+    print(out_path)
+    return 0
 
 
 def _run_extraction(input_path: Path, output_path: Path, batch_size: int) -> None:

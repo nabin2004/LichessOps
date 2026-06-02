@@ -11,10 +11,10 @@ DEFAULT_ARGS = {
     "retries": 1,
 }
 
-# uv run lichess-data download --month 2013-03 
 
 def _build_data_cmd(command: str, month: str | None, extra_args: list[str] | None = None) -> list[str]:
-    cmd = [os.environ.get("PYTHON_BIN", "uv"), "run", "lichess_data", command]
+    cmd = [os.environ.get("PYTHON_BIN", "python"), "-m", "lichess_data", command]
+
     if month:
         cmd.extend(["--month", month])
     else:
@@ -25,7 +25,7 @@ def _build_data_cmd(command: str, month: str | None, extra_args: list[str] | Non
 
 
 def _build_features_cmd(command: str, month: str | None, extra_args: list[str] | None = None) -> list[str]:
-    cmd = [os.environ.get("PYTHON_BIN", "uv"), "run", "lichess_features", command]
+    cmd = [os.environ.get("PYTHON_BIN", "python"), "-m", "lichess_features", command]
     if month:
         cmd.extend(["--month", month])
     else:
@@ -36,7 +36,7 @@ def _build_features_cmd(command: str, month: str | None, extra_args: list[str] |
 
 
 def _build_models_cmd(command: str, month: str | None, extra_args: list[str] | None = None) -> list[str]:
-    cmd = [os.environ.get("PYTHON_BIN", "uv"), "run", "lichess_models", command]
+    cmd = [os.environ.get("PYTHON_BIN", "python"), "-m", "lichess_models", command]
     if month:
         cmd.extend(["--month", month])
     else:
@@ -51,7 +51,7 @@ def _run_cmd(cmd: list[str]) -> None:
     env = os.environ.copy()
     package_paths = os.pathsep.join(
         [
-            "/opt/airflow/project/libs",
+            "/opt/airflow/project/libs/src",
             "/opt/airflow/project/packages/lichess_data/src",
             "/opt/airflow/project/packages/lichess_features/src",
             "/opt/airflow/project/packages/lichess_models/src",

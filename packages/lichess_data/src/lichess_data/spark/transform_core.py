@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any
 
 import chess.pgn
-from compression import zstd
+# from compression import zstd
+import zstandard as zstd
 
 from lichess_data.extract.pgn_parser import PGNParser
 from lichess_data.spark.schema import build_star_records

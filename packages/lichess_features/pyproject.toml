@@ -6,8 +6,10 @@ readme = "README.md"
 authors = [
     { name = "Nabin Oli", email = "olinabin2004@gmail.com" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
+    "dask>=2024.1.0",
+    "feast==0.46.0",
     "lichess-data",
     "lichess-libs",
 ]

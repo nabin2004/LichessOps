@@ -44,7 +44,9 @@ def temporal_split(
 def _features_path(month: str, data_cfg: dict) -> Path:
     pp_cfg = data_cfg.get("preprocessing") or {}
     subpath = pp_cfg.get("output_subpath", "preprocessed")
-    return get_artifact_path("lichess_data", f"{subpath}/{month}/features.parquet")
+    return get_artifact_path(
+        "lichess_data", f"{subpath}/{month}/features.parquet", create=False
+    )
 
 
 def _output_dir(month: str, data_cfg: dict) -> Path:

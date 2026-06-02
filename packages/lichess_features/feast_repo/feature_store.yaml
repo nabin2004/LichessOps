@@ -2,6 +2,9 @@ project: lichess
 registry: registry.db
 provider: local
 
+offline_store:
+  type: dask
+
 online_store:
   type: redis
   connection_string: feast-redis:6379
