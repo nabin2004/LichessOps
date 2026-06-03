@@ -14,10 +14,17 @@
 After monthly preprocessing and Feast split:
 
 ```bash
+# Default: single fit per candidate, no cross-validation (fast on large shards)
 uv run lichess-models train --month YYYY-MM
+
+# Optional: cross-validation + hyperparameter search (slow; for dev/small data)
+uv run lichess-models train --month YYYY-MM --cv
+
 uv run lichess-serving --port 8082
 ```
 
 Prometheus and Grafana (profile `monitoring`) scrape `http://host.docker.internal:8082/metrics`. Evidently drift reports: `docker compose --profile evidently up -d --build` with `reference.parquet` and `current.parquet` in `services/evidently/data/`.
 
-Set `MLFLOW_TRACKING_URI` and `MODEL_URI` for experiment tracking and model loading. MLflow is optional (install separately when compatible with your pandas/pyarrow versions); training works without it via `--no-mlflow`. See [Package organization](./package-organization.md) for the full pipeline map.
+Training logs to MLflow by default (test metrics, model artifact, registry). Install the client with `uv sync --package lichess-models --extra ml`, set `MLFLOW_TRACKING_URI` (default `http://localhost:5000`), and start the tracking server with `docker compose --profile core --profile ml up -d`. Use `--no-mlflow` to skip tracking on local runs. Hold-out test metrics (`test_*` in MLflow) are the authoritative evaluation signal when CV is disabled.
+
+Set `MODEL_URI` for serving from the registry. See [Package organization](./package-organization.md) for the full pipeline map.

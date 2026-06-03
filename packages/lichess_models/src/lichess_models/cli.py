@@ -21,9 +21,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    train_p = sub.add_parser("train", help="Train model with hyperparameter search")
+    train_p = sub.add_parser("train", help="Train outcome prediction model")
     _add_month_arg(train_p)
     train_p.add_argument("--run-id", default=None, help="Optional run directory name")
+    train_p.add_argument(
+        "--cv",
+        action="store_true",
+        help="Enable cross-validation and hyperparameter search (slow on large data)",
+    )
     train_p.add_argument(
         "--no-mlflow",
         action="store_true",
@@ -71,7 +76,8 @@ def _resolve_month(args: argparse.Namespace) -> str:
 
 def _cmd_train(args: argparse.Namespace) -> int:
     month = _resolve_month(args)
-    result = run_train(month, run_id=args.run_id)
+    use_cv = True if args.cv else None
+    result = run_train(month, run_id=args.run_id, use_cv=use_cv)
     eval_result = run_evaluate(month, result.run_dir)
     run_analyze(month, result.run_dir)
 

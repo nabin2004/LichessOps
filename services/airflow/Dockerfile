@@ -18,6 +18,7 @@ RUN python -m pip install --no-cache-dir uv \
         /opt/airflow/project/libs \
         /opt/airflow/project/packages/lichess_data \
         /opt/airflow/project/packages/lichess_models \
+        mlflow==2.22.1 \
     && uv pip install --no-cache-dir --no-deps feast==0.46.0 \
     && uv pip install --no-cache-dir --no-deps \
         /opt/airflow/project/packages/lichess_features \

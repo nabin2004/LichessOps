@@ -93,6 +93,7 @@ def _use_elt(params: dict) -> bool:
         "test_size": 0.2,
         "run_validation": True,
         "run_training": True,
+        "use_cv": False,
         "use_elt": True,
     },
 )
@@ -197,7 +198,10 @@ def lichess_monthly_ingestion():
         if not bool(params.get("run_training", True)):
             print("Training skipped by params.run_training", flush=True)
             return
-        cmd = _build_models_cmd("train", month, ["--no-mlflow"])
+        extra: list[str] = []
+        if bool(params.get("use_cv", False)):
+            extra.append("--cv")
+        cmd = _build_models_cmd("train", month, extra)
         _run_cmd(cmd)
 
     months = resolve_months()

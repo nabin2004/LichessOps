@@ -79,7 +79,13 @@ docker compose --profile core --profile pipeline run --rm spark-submit \
 
 ## Airflow ingestion DAGs
 
-DAGs live under [services/airflow/dags](airflow/dags). The `lichess_monthly_ingestion` DAG runs download → ELT (upload, spark-transform, duckdb-sync) or legacy extract → preprocess → Feast split → validate → train.
+DAGs live under [services/airflow/dags](airflow/dags). The `lichess_monthly_ingestion` DAG runs download → ELT (upload, spark-transform, duckdb-sync) or legacy extract → preprocess → Feast split → validate → train (with MLflow logging).
+
+For scheduled training, start **MinIO, MLflow, and Airflow** together:
+
+```bash
+docker compose --profile core --profile ml --profile orchestration up -d --build
+```
 
 Recommended environment variables (set in `services/airflow/.env` or a root `.env`):
 

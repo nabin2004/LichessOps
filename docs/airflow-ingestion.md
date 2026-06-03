@@ -21,7 +21,8 @@ Schedule: monthly on the 1st at 03:00 UTC (`0 3 1 * *`), `catchup=False`.
 
 Feast `FileSource` in `lichess_features/feast_repo` must use `timestamp_field="utc_datetime"` (Feast 0.46 ignores `event_timestamp_column`).
 | `run_validation` | `true` | Run checksum validation and Great Expectations checks. |
-| `run_training` | `true` | Run `lichess-models train` after split. |
+| `run_training` | `true` | Run `lichess-models train` after split (logs to MLflow). |
+| `use_cv` | `false` | When true, pass `--cv` for cross-validation and hyperparameter search (slow on large shards). |
 | `use_elt` | `true` | When true, run MinIO upload → spark-transform → duckdb-sync instead of legacy `extract`. |
 
 ### Task graph (ELT path, `use_elt=true`)
@@ -38,10 +39,10 @@ download → extract → preprocess → feast split → validate → validate-ge
 
 ## Local setup
 
-1. Start MinIO when using ELT (recommended):
+1. Start MinIO and MLflow when using ELT and scheduled training (recommended):
 
 ```bash
-docker compose --profile core up -d
+docker compose --profile core --profile ml up -d
 ```
 
 2. Copy env example (optional but recommended):
@@ -68,13 +69,13 @@ _PIP_ADDITIONAL_REQUIREMENTS=chess==1.10.0 zstandard==0.23.0 pandas==2.2.2 pyarr
 
 For a longer-lived setup, build a custom Airflow image that bakes these dependencies in.
 
-4. Start Airflow:
+4. Start Airflow (rebuild the image after Dockerfile changes):
 
 ```bash
-docker compose --profile orchestration up -d
+docker compose --profile orchestration up -d --build
 ```
 
-Airflow workers receive `AWS_ENDPOINT_URL=http://minio:9000` and MinIO credentials from the compose file.
+Airflow workers receive `AWS_ENDPOINT_URL=http://minio:9000`, MinIO credentials, and `MLFLOW_TRACKING_URI=http://mlflow:5000` from the compose file. Start **`core` + `ml` + `orchestration`** before triggering a run that includes training, or MLflow logging will fail.
 
 ## Triggering a run
 
@@ -102,6 +103,7 @@ See [Great Expectations validation](./great-expectations.md) for details.
 | DuckDB catalog | `artifacts/lichess_data/duckdb/lichess.duckdb` |
 | Preprocessed features | `artifacts/lichess_data/preprocessed/YYYY-MM/features.parquet` |
 | Train/test | `artifacts/lichess_data/preprocessed/YYYY-MM/train.parquet`, `test.parquet` |
+| Model runs | `artifacts/lichess_models/{run_id}/` (also logged to MLflow when tracking is enabled) |
 
 ## Troubleshooting
 
@@ -109,3 +111,4 @@ See [Great Expectations validation](./great-expectations.md) for details.
 - If imports fail, confirm `AIRFLOW_PROJECT_DIR=../..` in `services/airflow/.env` so `/opt/airflow/project/packages/` exists in workers, then restart the stack.
 - If ELT upload fails, ensure MinIO (`--profile core`) is running and reachable from workers at `http://minio:9000`.
 - If dependencies are missing, use `_PIP_ADDITIONAL_REQUIREMENTS` or a custom Airflow image.
+- If training fails on MLflow, ensure `core` and `ml` profiles are running and MLflow is healthy at `http://localhost:5000/health`.

@@ -71,13 +71,17 @@ def log_training_run(
             "month": month,
             "best_estimator": train_metadata.get("best_estimator", ""),
             "scoring": train_metadata.get("scoring", ""),
+            "use_cv": train_metadata.get("use_cv", False),
             **{
                 f"best_{k}": v
                 for k, v in (train_metadata.get("best_params") or {}).items()
             },
         }
     )
-    mlflow.log_metric("cv_score", float(train_metadata.get("best_cv_score", 0)))
+    if train_metadata.get("use_cv"):
+        mlflow.log_metric("cv_score", float(train_metadata.get("best_cv_score", 0)))
+    else:
+        mlflow.log_metric("train_score", float(train_metadata.get("best_train_score", 0)))
     for key, value in metrics.items():
         mlflow.log_metric(f"test_{key}", value)
 

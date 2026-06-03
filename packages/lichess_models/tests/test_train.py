@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -35,9 +36,12 @@ def synthetic_parquet(tmp_path: Path) -> tuple[Path, str]:
     return out_dir, month
 
 
-def test_train_evaluate_analyze_smoke(synthetic_parquet, monkeypatch: pytest.MonkeyPatch) -> None:
-    out_dir, month = synthetic_parquet
-
+def _patch_training_env(
+    monkeypatch: pytest.MonkeyPatch,
+    out_dir: Path,
+    month: str,
+    tiny_cfg: dict,
+) -> None:
     def fake_artifact_path(component: str, subpath: str, *, create: bool = False) -> Path:
         if subpath.endswith(f"preprocessed/{month}"):
             return out_dir
@@ -51,9 +55,12 @@ def test_train_evaluate_analyze_smoke(synthetic_parquet, monkeypatch: pytest.Mon
     monkeypatch.setattr("lichess_models.dataset.get_artifact_path", fake_artifact_path)
     monkeypatch.setattr("lichess_models.train.get_run_dir", fake_run_dir)
 
-    tiny_cfg = {
+
+def _base_cfg(*, use_cv: bool) -> dict:
+    return {
         "training": {
             "label_column": "player_outcome",
+            "use_cv": use_cv,
             "cv_folds": 2,
             "scoring": "balanced_accuracy",
             "random_state": 0,
@@ -67,6 +74,31 @@ def test_train_evaluate_analyze_smoke(synthetic_parquet, monkeypatch: pytest.Mon
         "analyze": {"min_games": 1, "group_by": ["player_rating_bucket", "eco"]},
     }
 
+
+def test_train_without_cv(synthetic_parquet, monkeypatch: pytest.MonkeyPatch) -> None:
+    out_dir, month = synthetic_parquet
+    tiny_cfg = _base_cfg(use_cv=False)
+    _patch_training_env(monkeypatch, out_dir, month, tiny_cfg)
+
+    with patch("lichess_models.train.load_config", return_value=tiny_cfg):
+        with patch("lichess_models.evaluate.load_config", return_value=tiny_cfg):
+            with patch("lichess_models.analyze.load_config", return_value=tiny_cfg):
+                with patch("lichess_models.dataset.load_config", return_value=tiny_cfg):
+                    result = run_train(month, config=tiny_cfg, run_id="run")
+
+    metadata = json.loads((result.run_dir / "train_metadata.json").read_text())
+    assert metadata["use_cv"] is False
+    assert "best_train_score" in metadata
+    assert "best_cv_score" not in metadata
+    assert result.use_cv is False
+    assert (result.run_dir / "model.joblib").exists()
+
+
+def test_train_evaluate_analyze_smoke(synthetic_parquet, monkeypatch: pytest.MonkeyPatch) -> None:
+    out_dir, month = synthetic_parquet
+    tiny_cfg = _base_cfg(use_cv=True)
+    _patch_training_env(monkeypatch, out_dir, month, tiny_cfg)
+
     with patch("lichess_models.train.load_config", return_value=tiny_cfg):
         with patch("lichess_models.evaluate.load_config", return_value=tiny_cfg):
             with patch("lichess_models.analyze.load_config", return_value=tiny_cfg):
@@ -75,6 +107,10 @@ def test_train_evaluate_analyze_smoke(synthetic_parquet, monkeypatch: pytest.Mon
                     eval_result = run_evaluate(month, result.run_dir, config=tiny_cfg)
                     report_path = run_analyze(month, result.run_dir, config=tiny_cfg)
 
+    metadata = json.loads((result.run_dir / "train_metadata.json").read_text())
+    assert metadata["use_cv"] is True
+    assert "best_cv_score" in metadata
+    assert result.use_cv is True
     assert (result.run_dir / "model.joblib").exists()
     assert eval_result.metrics["accuracy"] >= 0.0
     assert report_path.exists()

@@ -1,6 +1,7 @@
 training:
   label_column: player_outcome
   perspective: player
+  use_cv: false
   cv_folds: 3
   scoring: balanced_accuracy
   random_state: 42

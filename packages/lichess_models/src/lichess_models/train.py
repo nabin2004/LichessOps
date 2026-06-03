@@ -10,6 +10,7 @@ from typing import Any
 import joblib
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import get_scorer
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 
@@ -45,9 +46,10 @@ class TrainResult:
     pipeline: Pipeline
     run_dir: Path
     best_estimator_name: str
-    best_cv_score: float
+    best_score: float
     best_params: dict[str, Any]
     month: str
+    use_cv: bool
 
 
 def _build_classifier(name: str, random_state: int):
@@ -73,6 +75,11 @@ def _build_pipeline(estimator_name: str, config: dict) -> Pipeline:
             ("classifier", _build_classifier(estimator_name, random_state)),
         ]
     )
+
+
+def _score_pipeline(pipeline: Pipeline, X, y, scoring: str) -> float:
+    scorer = get_scorer(scoring)
+    return float(scorer(pipeline, X, y))
 
 
 def _make_search(
@@ -105,23 +112,19 @@ def _make_search(
     )
 
 
-def run_train(month: str, *, config: dict | None = None, run_id: str | None = None) -> TrainResult:
-    cfg = config or load_config("lichess_models")
-    training_cfg = cfg.get("training") or {}
-    model_cfg = cfg.get("model") or {}
-
-    random_state = int(training_cfg.get("random_state", 42))
-    cv_folds = int(training_cfg.get("cv_folds", 3))
-    scoring = training_cfg.get("scoring", "balanced_accuracy")
-    search_mode = model_cfg.get("search", "randomized")
-    n_iter = int(model_cfg.get("n_iter", 24))
-    candidates = list(model_cfg.get("candidates") or ["random_forest"])
-
-    train_df = to_player_perspective(load_split(month, split="train"))
-    X, y, _meta = split_features_labels(train_df, cfg)
-
+def _train_with_cv(
+    X,
+    y,
+    *,
+    cfg: dict,
+    candidates: list[str],
+    scoring: str,
+    cv_folds: int,
+    search_mode: str,
+    n_iter: int,
+    random_state: int,
+) -> tuple[Pipeline, str, float, dict[str, Any]]:
     cv = TimeSeriesSplit(n_splits=cv_folds)
-
     best_pipeline: Pipeline | None = None
     best_score = float("-inf")
     best_name = ""
@@ -157,28 +160,118 @@ def run_train(month: str, *, config: dict | None = None, run_id: str | None = No
     if best_pipeline is None:
         raise RuntimeError("No estimator was trained")
 
+    return best_pipeline, best_name, best_score, best_params
+
+
+def _train_without_cv(
+    X,
+    y,
+    *,
+    cfg: dict,
+    candidates: list[str],
+    scoring: str,
+) -> tuple[Pipeline, str, float, dict[str, Any]]:
+    best_pipeline: Pipeline | None = None
+    best_score = float("-inf")
+    best_name = ""
+
+    for name in candidates:
+        log.info("Training %s (no CV)", name)
+        pipeline = _build_pipeline(name, cfg)
+        pipeline.fit(X, y)
+        score = _score_pipeline(pipeline, X, y, scoring)
+        log.info("  %s %s=%.4f", name, scoring, score)
+        if score > best_score:
+            best_score = score
+            best_pipeline = pipeline
+            best_name = name
+
+    if best_pipeline is None:
+        raise RuntimeError("No estimator was trained")
+
+    return best_pipeline, best_name, best_score, {}
+
+
+def run_train(
+    month: str,
+    *,
+    config: dict | None = None,
+    run_id: str | None = None,
+    use_cv: bool | None = None,
+) -> TrainResult:
+    cfg = config or load_config("lichess_models")
+    training_cfg = cfg.get("training") or {}
+    model_cfg = cfg.get("model") or {}
+
+    if use_cv is None:
+        use_cv = bool(training_cfg.get("use_cv", False))
+
+    random_state = int(training_cfg.get("random_state", 42))
+    cv_folds = int(training_cfg.get("cv_folds", 3))
+    scoring = training_cfg.get("scoring", "balanced_accuracy")
+    search_mode = model_cfg.get("search", "randomized")
+    n_iter = int(model_cfg.get("n_iter", 24))
+    candidates = list(model_cfg.get("candidates") or ["random_forest"])
+
+    train_df = to_player_perspective(load_split(month, split="train"))
+    X, y, _meta = split_features_labels(train_df, cfg)
+
+    if use_cv:
+        best_pipeline, best_name, best_score, best_params = _train_with_cv(
+            X,
+            y,
+            cfg=cfg,
+            candidates=candidates,
+            scoring=scoring,
+            cv_folds=cv_folds,
+            search_mode=search_mode,
+            n_iter=n_iter,
+            random_state=random_state,
+        )
+    else:
+        best_pipeline, best_name, best_score, best_params = _train_without_cv(
+            X,
+            y,
+            cfg=cfg,
+            candidates=candidates,
+            scoring=scoring,
+        )
+
     run_dir = get_run_dir("lichess_models", run_id)
     model_path = run_dir / "model.joblib"
     joblib.dump(best_pipeline, model_path)
 
-    metadata = {
+    metadata: dict[str, Any] = {
         "month": month,
         "best_estimator": best_name,
-        "best_cv_score": best_score,
         "best_params": best_params,
         "scoring": scoring,
         "n_train_rows": len(X),
+        "use_cv": use_cv,
     }
+    if use_cv:
+        metadata["best_cv_score"] = best_score
+    else:
+        metadata["best_train_score"] = best_score
+
     (run_dir / "train_metadata.json").write_text(json.dumps(metadata, indent=2))
 
-    log.info("Saved model → %s (estimator=%s, cv=%.4f)", model_path, best_name, best_score)
+    score_label = "cv" if use_cv else "train"
+    log.info(
+        "Saved model → %s (estimator=%s, %s=%.4f)",
+        model_path,
+        best_name,
+        score_label,
+        best_score,
+    )
     return TrainResult(
         pipeline=best_pipeline,
         run_dir=run_dir,
         best_estimator_name=best_name,
-        best_cv_score=best_score,
+        best_score=best_score,
         best_params=best_params,
         month=month,
+        use_cv=use_cv,
     )
 
 
