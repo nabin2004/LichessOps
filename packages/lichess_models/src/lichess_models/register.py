@@ -6,6 +6,9 @@ import os
 from pathlib import Path
 from typing import Any
 
+import joblib
+from sklearn.pipeline import Pipeline
+
 from lichess_libs.shared import get_logger, load_config
 
 from lichess_models.dataset import load_split, split_features_labels, to_player_perspective
@@ -39,6 +42,35 @@ def start_training_run(
     return mlflow.start_run(run_name=run_name or f"outcome-{month}")
 
 
+def _load_candidate_pipelines(run_dir: Path, train_metadata: dict[str, Any]) -> dict[str, Pipeline]:
+    candidates = train_metadata.get("candidates") or {}
+    models_dir = run_dir / "models"
+    pipelines: dict[str, Pipeline] = {}
+    for name in candidates:
+        path = models_dir / f"{name}.joblib"
+        if path.is_file():
+            pipelines[name] = joblib.load(path)
+    return pipelines
+
+
+def _log_sklearn_model(
+    pipeline: Pipeline,
+    artifact_path: str,
+    *,
+    X_sample,
+) -> None:
+    import mlflow
+    from mlflow.models import infer_signature
+
+    signature = infer_signature(X_sample, pipeline.predict(X_sample))
+    mlflow.sklearn.log_model(
+        pipeline,
+        artifact_path=artifact_path,
+        signature=signature,
+        input_example=X_sample.head(5),
+    )
+
+
 def log_training_run(
     run_dir: Path,
     month: str,
@@ -51,7 +83,6 @@ def log_training_run(
     """Log model, metrics, and artifacts to MLflow; optionally register."""
     try:
         import mlflow
-        from mlflow.models import infer_signature
     except ImportError as exc:
         raise RuntimeError(
             "MLflow is not installed. Install with: uv sync --package lichess-models --extra ml"
@@ -64,21 +95,25 @@ def log_training_run(
     pipeline = load_pipeline(run_dir)
     train_df = to_player_perspective(load_split(month, split="train"))
     X_sample, _, _ = split_features_labels(train_df.head(100), cfg)
-    signature = infer_signature(X_sample, pipeline.predict(X_sample))
+
+    use_cv = bool(train_metadata.get("use_cv", False))
+    score_prefix = "cv_score" if use_cv else "train_score"
+    for name, info in (train_metadata.get("candidates") or {}).items():
+        mlflow.log_metric(f"{score_prefix}_{name}", float(info.get("score", 0)))
 
     mlflow.log_params(
         {
             "month": month,
             "best_estimator": train_metadata.get("best_estimator", ""),
             "scoring": train_metadata.get("scoring", ""),
-            "use_cv": train_metadata.get("use_cv", False),
+            "use_cv": use_cv,
             **{
                 f"best_{k}": v
                 for k, v in (train_metadata.get("best_params") or {}).items()
             },
         }
     )
-    if train_metadata.get("use_cv"):
+    if use_cv:
         mlflow.log_metric("cv_score", float(train_metadata.get("best_cv_score", 0)))
     else:
         mlflow.log_metric("train_score", float(train_metadata.get("best_train_score", 0)))
@@ -96,11 +131,18 @@ def log_training_run(
         if path.is_file():
             mlflow.log_artifact(str(path))
 
-    mlflow.sklearn.log_model(
+    candidate_pipelines = _load_candidate_pipelines(run_dir, train_metadata)
+    for name, candidate_pipeline in candidate_pipelines.items():
+        _log_sklearn_model(
+            candidate_pipeline,
+            f"candidates/{name}",
+            X_sample=X_sample,
+        )
+
+    _log_sklearn_model(
         pipeline,
-        artifact_path="model",
-        signature=signature,
-        input_example=X_sample.head(5),
+        "model",
+        X_sample=X_sample,
     )
 
     run_id = mlflow.active_run().info.run_id if mlflow.active_run() else ""

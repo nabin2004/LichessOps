@@ -75,6 +75,25 @@ def _base_cfg(*, use_cv: bool) -> dict:
     }
 
 
+def test_train_saves_all_candidates(synthetic_parquet, monkeypatch: pytest.MonkeyPatch) -> None:
+    out_dir, month = synthetic_parquet
+    tiny_cfg = _base_cfg(use_cv=False)
+    tiny_cfg["model"]["candidates"] = ["logistic_regression", "random_forest"]
+    _patch_training_env(monkeypatch, out_dir, month, tiny_cfg)
+
+    with patch("lichess_models.train.load_config", return_value=tiny_cfg):
+        with patch("lichess_models.dataset.load_config", return_value=tiny_cfg):
+            result = run_train(month, config=tiny_cfg, run_id="run-multi")
+
+    metadata = json.loads((result.run_dir / "train_metadata.json").read_text())
+    assert set(metadata["candidates"]) == {"logistic_regression", "random_forest"}
+    assert metadata["best_estimator"] in metadata["candidates"]
+    for name in metadata["candidates"]:
+        assert (result.run_dir / "models" / f"{name}.joblib").exists()
+        assert "score" in metadata["candidates"][name]
+    assert len(result.candidates) == 2
+
+
 def test_train_without_cv(synthetic_parquet, monkeypatch: pytest.MonkeyPatch) -> None:
     out_dir, month = synthetic_parquet
     tiny_cfg = _base_cfg(use_cv=False)

@@ -46,6 +46,13 @@ PARAM_GRIDS: dict[str, dict[str, list[Any]]] = {
 
 
 @dataclass
+class CandidateResult:
+    pipeline: Pipeline
+    score: float
+    params: dict[str, Any]
+
+
+@dataclass
 class TrainResult:
     pipeline: Pipeline
     run_dir: Path
@@ -54,6 +61,7 @@ class TrainResult:
     best_params: dict[str, Any]
     month: str
     use_cv: bool
+    candidates: dict[str, CandidateResult]
 
 
 def _build_classifier(name: str, random_state: int):
@@ -127,12 +135,13 @@ def _train_with_cv(
     search_mode: str,
     n_iter: int,
     random_state: int,
-) -> tuple[Pipeline, str, float, dict[str, Any]]:
+) -> tuple[Pipeline, str, float, dict[str, Any], dict[str, CandidateResult]]:
     cv = TimeSeriesSplit(n_splits=cv_folds)
     best_pipeline: Pipeline | None = None
     best_score = float("-inf")
     best_name = ""
     best_params: dict[str, Any] = {}
+    candidate_results: dict[str, CandidateResult] = {}
 
     for name in candidates:
         log.info("Hyperparameter search for %s", name)
@@ -155,6 +164,11 @@ def _train_with_cv(
             search.best_score_,
             search.best_params_,
         )
+        candidate_results[name] = CandidateResult(
+            pipeline=search.best_estimator_,
+            score=float(search.best_score_),
+            params=dict(search.best_params_),
+        )
         if search.best_score_ > best_score:
             best_score = search.best_score_
             best_pipeline = search.best_estimator_
@@ -164,7 +178,7 @@ def _train_with_cv(
     if best_pipeline is None:
         raise RuntimeError("No estimator was trained")
 
-    return best_pipeline, best_name, best_score, best_params
+    return best_pipeline, best_name, best_score, best_params, candidate_results
 
 
 def _train_without_cv(
@@ -174,10 +188,11 @@ def _train_without_cv(
     cfg: dict,
     candidates: list[str],
     scoring: str,
-) -> tuple[Pipeline, str, float, dict[str, Any]]:
+) -> tuple[Pipeline, str, float, dict[str, Any], dict[str, CandidateResult]]:
     best_pipeline: Pipeline | None = None
     best_score = float("-inf")
     best_name = ""
+    candidate_results: dict[str, CandidateResult] = {}
 
     for name in candidates:
         log.info("Training %s (no CV)", name)
@@ -185,6 +200,11 @@ def _train_without_cv(
         pipeline.fit(X, y)
         score = _score_pipeline(pipeline, X, y, scoring)
         log.info("  %s %s=%.4f", name, scoring, score)
+        candidate_results[name] = CandidateResult(
+            pipeline=pipeline,
+            score=score,
+            params={},
+        )
         if score > best_score:
             best_score = score
             best_pipeline = pipeline
@@ -193,7 +213,7 @@ def _train_without_cv(
     if best_pipeline is None:
         raise RuntimeError("No estimator was trained")
 
-    return best_pipeline, best_name, best_score, {}
+    return best_pipeline, best_name, best_score, {}, candidate_results
 
 
 def run_train(
@@ -235,7 +255,7 @@ def run_train(
     n_train_games = len(train_games)
 
     if use_cv:
-        best_pipeline, best_name, best_score, best_params = _train_with_cv(
+        best_pipeline, best_name, best_score, best_params, candidate_results = _train_with_cv(
             X,
             y,
             cfg=cfg,
@@ -247,7 +267,7 @@ def run_train(
             random_state=random_state,
         )
     else:
-        best_pipeline, best_name, best_score, best_params = _train_without_cv(
+        best_pipeline, best_name, best_score, best_params, candidate_results = _train_without_cv(
             X,
             y,
             cfg=cfg,
@@ -258,6 +278,16 @@ def run_train(
     run_dir = get_run_dir("lichess_models", run_id)
     model_path = run_dir / "model.joblib"
     joblib.dump(best_pipeline, model_path)
+
+    models_dir = run_dir / "models"
+    models_dir.mkdir(exist_ok=True)
+    candidate_metadata: dict[str, dict[str, Any]] = {}
+    for name, result in candidate_results.items():
+        joblib.dump(result.pipeline, models_dir / f"{name}.joblib")
+        candidate_metadata[name] = {
+            "score": result.score,
+            "params": result.params,
+        }
 
     metadata: dict[str, Any] = {
         "month": month,
@@ -270,6 +300,7 @@ def run_train(
         "use_cv": use_cv,
         "use_sample": use_sample,
         "max_rows": max_rows,
+        "candidates": candidate_metadata,
     }
     if use_cv:
         metadata["best_cv_score"] = best_score
@@ -294,6 +325,7 @@ def run_train(
         best_params=best_params,
         month=month,
         use_cv=use_cv,
+        candidates=candidate_results,
     )
 
 
