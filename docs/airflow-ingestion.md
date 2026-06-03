@@ -120,3 +120,4 @@ See [Great Expectations validation](./great-expectations.md) for details.
 - If ELT upload fails, ensure MinIO (`--profile core`) is running and reachable from workers at `http://minio:9000`.
 - If dependencies are missing, use `_PIP_ADDITIONAL_REQUIREMENTS` or a custom Airflow image.
 - If training fails on MLflow, ensure `core` and `ml` profiles are running and MLflow is healthy at `http://localhost:5000/health`.
+- If the Airflow log shows `MLflow logging skipped` with `403` and `Invalid Host header - possible DNS rebinding attack detected`, MLflow 3.5+ rejected the worker's `Host: mlflow:5000` header. Recreate the tracking server with allowed hosts configured in [`services/mlflow/docker-compose.yml`](../services/mlflow/docker-compose.yml) (`MLFLOW_SERVER_ALLOWED_HOSTS=mlflow:5000,localhost:*,127.0.0.1:*`), then backfill without retraining: `lichess-models register --month YYYY-MM --run-dir artifacts/lichess_models/{run_id}`.
