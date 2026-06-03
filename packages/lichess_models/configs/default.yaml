@@ -2,6 +2,9 @@ training:
   label_column: player_outcome
   perspective: player
   use_cv: false
+  use_sample: false
+  max_rows: 1000
+  test_size: 0.2
   cv_folds: 3
   scoring: balanced_accuracy
   random_state: 42

@@ -16,7 +16,11 @@ from sklearn.pipeline import Pipeline
 
 from lichess_libs.shared import get_logger, get_run_dir, load_config
 
-from lichess_models.dataset import load_split, split_features_labels, to_player_perspective
+from lichess_models.dataset import (
+    load_game_splits,
+    split_features_labels,
+    to_player_perspective,
+)
 from lichess_models.features import build_preprocessor
 
 log = get_logger("lichess_models.train")
@@ -198,6 +202,8 @@ def run_train(
     config: dict | None = None,
     run_id: str | None = None,
     use_cv: bool | None = None,
+    use_sample: bool | None = None,
+    max_rows: int | None = None,
 ) -> TrainResult:
     cfg = config or load_config("lichess_models")
     training_cfg = cfg.get("training") or {}
@@ -205,16 +211,28 @@ def run_train(
 
     if use_cv is None:
         use_cv = bool(training_cfg.get("use_cv", False))
+    if use_sample is None:
+        use_sample = bool(training_cfg.get("use_sample", False))
+    if max_rows is None and use_sample:
+        max_rows = int(training_cfg.get("max_rows", 1000))
 
     random_state = int(training_cfg.get("random_state", 42))
+    test_size = float(training_cfg.get("test_size", 0.2))
     cv_folds = int(training_cfg.get("cv_folds", 3))
     scoring = training_cfg.get("scoring", "balanced_accuracy")
     search_mode = model_cfg.get("search", "randomized")
     n_iter = int(model_cfg.get("n_iter", 24))
     candidates = list(model_cfg.get("candidates") or ["random_forest"])
 
-    train_df = to_player_perspective(load_split(month, split="train"))
+    train_games, _test_games = load_game_splits(
+        month,
+        use_sample=use_sample,
+        max_rows=max_rows,
+        test_size=test_size,
+    )
+    train_df = to_player_perspective(train_games)
     X, y, _meta = split_features_labels(train_df, cfg)
+    n_train_games = len(train_games)
 
     if use_cv:
         best_pipeline, best_name, best_score, best_params = _train_with_cv(
@@ -247,7 +265,11 @@ def run_train(
         "best_params": best_params,
         "scoring": scoring,
         "n_train_rows": len(X),
+        "n_train_games": n_train_games,
+        "n_train_player_rows": len(X),
         "use_cv": use_cv,
+        "use_sample": use_sample,
+        "max_rows": max_rows,
     }
     if use_cv:
         metadata["best_cv_score"] = best_score

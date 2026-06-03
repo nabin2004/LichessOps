@@ -23,7 +23,7 @@ from lichess_libs.shared import get_logger, load_config
 
 from lichess_models.dataset import (
     OUTCOME_DISPLAY,
-    load_split,
+    load_game_splits,
     split_features_labels,
     to_player_perspective,
 )
@@ -59,11 +59,26 @@ def run_evaluate(
     *,
     config: dict | None = None,
     split: str = "test",
+    use_sample: bool | None = None,
+    max_rows: int | None = None,
 ) -> EvalResult:
     cfg = config or load_config("lichess_models")
+    training_cfg = cfg.get("training") or {}
     pipeline: Pipeline = load_pipeline(run_dir)
 
-    df = to_player_perspective(load_split(month, split=split))
+    if use_sample is None:
+        use_sample = bool(training_cfg.get("use_sample", False))
+    if max_rows is None and use_sample:
+        max_rows = int(training_cfg.get("max_rows", 1000))
+    test_size = float(training_cfg.get("test_size", 0.2))
+
+    _train_games, test_games = load_game_splits(
+        month,
+        use_sample=use_sample,
+        max_rows=max_rows,
+        test_size=test_size,
+    )
+    df = to_player_perspective(test_games)
     X, y, meta = split_features_labels(df, cfg)
 
     y_pred = pipeline.predict(X)

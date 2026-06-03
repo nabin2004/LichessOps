@@ -37,6 +37,9 @@ Key keys in `configs/default.yaml`:
 | Key | Default | Description |
 | --- | --- | --- |
 | `training.use_cv` | `false` | Cross-validation + hyperparameter search |
+| `training.use_sample` | `false` | Cap combined **game** rows before train/test split (OOM-safe dev runs) |
+| `training.max_rows` | `1000` | Max games when `use_sample` is true (training expands to ~2× player rows) |
+| `training.test_size` | `0.2` | Fraction for in-memory re-split when sampling during `train` |
 | `training.cv_folds` | `3` | TimeSeriesSplit folds (only when `use_cv` is true) |
 | `training.scoring` | `balanced_accuracy` | Scorer for candidate selection |
 | `model.candidates` | logistic, RF, HGB | Estimators to compare |

@@ -94,6 +94,8 @@ def _use_elt(params: dict) -> bool:
         "run_validation": True,
         "run_training": True,
         "use_cv": False,
+        "use_sample": False,
+        "max_rows": 1000,
         "use_elt": True,
     },
 )
@@ -171,6 +173,9 @@ def lichess_monthly_ingestion():
         params = _get_params(context)
         test_size = params.get("test_size", 0.2)
         extra = ["--test-size", str(test_size)]
+        if bool(params.get("use_sample", False)):
+            extra.append("--use-sample")
+            extra.extend(["--max-rows", str(int(params.get("max_rows", 1000)))])
         cmd = _build_features_cmd("split", month, extra)
         _run_cmd(cmd)
 
@@ -201,6 +206,9 @@ def lichess_monthly_ingestion():
         extra: list[str] = []
         if bool(params.get("use_cv", False)):
             extra.append("--cv")
+        if bool(params.get("use_sample", False)):
+            extra.append("--use-sample")
+            extra.extend(["--max-rows", str(int(params.get("max_rows", 1000)))])
         cmd = _build_models_cmd("train", month, extra)
         _run_cmd(cmd)
 

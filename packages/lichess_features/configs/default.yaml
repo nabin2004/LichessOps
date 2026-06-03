@@ -1,6 +1,8 @@
 feast:
   source_path: artifacts/lichess_data/preprocessed/features.parquet
   test_size: 0.2
+  use_sample: false
+  max_rows: 1000
   ttl_days: 3650
   saved_dataset_prefix: lichess
   feature_service: pregame_service

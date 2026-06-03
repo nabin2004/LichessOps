@@ -30,6 +30,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Enable cross-validation and hyperparameter search (slow on large data)",
     )
     train_p.add_argument(
+        "--use-sample",
+        action="store_true",
+        help="Cap combined games before train/test split (OOM-safe dev runs)",
+    )
+    train_p.add_argument(
+        "--max-rows",
+        type=int,
+        default=None,
+        help="Max games to keep when --use-sample (default: from config)",
+    )
+    train_p.add_argument(
         "--no-mlflow",
         action="store_true",
         help="Skip MLflow logging and registration",
@@ -77,8 +88,20 @@ def _resolve_month(args: argparse.Namespace) -> str:
 def _cmd_train(args: argparse.Namespace) -> int:
     month = _resolve_month(args)
     use_cv = True if args.cv else None
-    result = run_train(month, run_id=args.run_id, use_cv=use_cv)
-    eval_result = run_evaluate(month, result.run_dir)
+    use_sample = True if args.use_sample else None
+    result = run_train(
+        month,
+        run_id=args.run_id,
+        use_cv=use_cv,
+        use_sample=use_sample,
+        max_rows=args.max_rows,
+    )
+    eval_result = run_evaluate(
+        month,
+        result.run_dir,
+        use_sample=use_sample,
+        max_rows=args.max_rows,
+    )
     run_analyze(month, result.run_dir)
 
     print(result.run_dir)

@@ -40,6 +40,35 @@ def load_split(month: str, *, split: str = "train") -> pd.DataFrame:
     return df
 
 
+def load_game_splits(
+    month: str,
+    *,
+    use_sample: bool = False,
+    max_rows: int | None = None,
+    test_size: float = 0.2,
+    data_config: dict | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load train/test game parquets, optionally re-cap and re-split in memory."""
+    train_df = load_split(month, split="train")
+    test_df = load_split(month, split="test")
+
+    if not use_sample:
+        return train_df, test_df
+
+    from lichess_libs.shared.sampling import limit_games, temporal_split
+
+    combined = pd.concat([train_df, test_df], ignore_index=True)
+    combined = limit_games(combined, use_sample=True, max_rows=max_rows)
+    train_df, test_df = temporal_split(combined, test_size=test_size)
+    log.info(
+        "Re-split sampled games for %s: train=%d test=%d",
+        month,
+        len(train_df),
+        len(test_df),
+    )
+    return train_df, test_df
+
+
 def _player_row(df: pd.DataFrame, *, color: str) -> pd.DataFrame:
     """Build player-centric rows for white or black."""
     out = pd.DataFrame(index=df.index)

@@ -32,6 +32,17 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Fraction of rows for chronological test split (default: from config)",
     )
+    sp.add_argument(
+        "--use-sample",
+        action="store_true",
+        help="Cap combined games before train/test split (OOM-safe dev runs)",
+    )
+    sp.add_argument(
+        "--max-rows",
+        type=int,
+        default=None,
+        help="Max games to keep when --use-sample (default: from config)",
+    )
 
     args = parser.parse_args(argv)
 
@@ -43,7 +54,12 @@ def main(argv: list[str] | None = None) -> int:
 
 def _cmd_split(args: argparse.Namespace) -> int:
     month = ld.resolve_previous_month() if args.previous_month else args.month
-    train_path, test_path = run_split(month, test_size=args.test_size)
+    train_path, test_path = run_split(
+        month,
+        test_size=args.test_size,
+        use_sample=args.use_sample or None,
+        max_rows=args.max_rows,
+    )
     print(train_path)
     print(test_path)
     return 0

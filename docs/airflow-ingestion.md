@@ -18,6 +18,8 @@ Schedule: monthly on the 1st at 03:00 UTC (`0 3 1 * *`), `catchup=False`.
 | `verify_checksum` | `true` | Validate downloaded shard checksum during download. |
 | `skip_existing` | `true` | Skip re-download if the shard already exists and is valid. |
 | `test_size` | `0.2` | Fraction for temporal test split in Feast (`lichess-features split`). |
+| `use_sample` | `false` | When true, cap combined **game** rows before split/train (OOM-safe dev runs). |
+| `max_rows` | `1000` | Max games to keep when `use_sample` is true (applied at Feast split and training). |
 
 Feast `FileSource` in `lichess_features/feast_repo` must use `timestamp_field="utc_datetime"` (Feast 0.46 ignores `event_timestamp_column`).
 | `run_validation` | `true` | Run checksum validation and Great Expectations checks. |
@@ -82,6 +84,12 @@ Airflow workers receive `AWS_ENDPOINT_URL=http://minio:9000`, MinIO credentials,
 - Open Airflow UI at `http://localhost:8080`
 - Unpause `lichess_monthly_ingestion`
 - Use the Trigger button to provide params (for example `{"month": "2013-01", "use_elt": true}`)
+
+For memory-constrained training on a full shard:
+
+```json
+{"month": "2013-01", "use_sample": true, "max_rows": 1000, "test_size": 0.2, "use_cv": false}
+```
 
 If `month` is blank, the DAG uses `--previous-month` for all steps.
 

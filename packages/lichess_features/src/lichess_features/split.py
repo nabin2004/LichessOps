@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from lichess_libs.shared import get_artifact_path, get_logger, load_config
+from lichess_libs.shared.sampling import limit_games, temporal_split
 
 from lichess_features.materialize import apply_with_source, feast_source_path, get_store
 
@@ -14,31 +15,6 @@ log = get_logger("lichess_features.split")
 
 ENTITY_COLUMNS = ("site", "utc_datetime")
 LABEL_COLUMNS = ("result_label",)
-
-
-def temporal_split(
-    df: pd.DataFrame, test_size: float = 0.2
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Sort by ``utc_datetime`` and split chronologically."""
-    log.info("Temporal train/test split (test_size=%.2f)", test_size)
-
-    df = df.sort_values("utc_datetime").reset_index(drop=True)
-    split_idx = int(len(df) * (1 - test_size))
-    train, test = df.iloc[:split_idx], df.iloc[split_idx:]
-
-    log.info(
-        "  train: %d rows (%s → %s)",
-        len(train),
-        train["utc_datetime"].min(),
-        train["utc_datetime"].max(),
-    )
-    log.info(
-        "  test:  %d rows (%s → %s)",
-        len(test),
-        test["utc_datetime"].min(),
-        test["utc_datetime"].max(),
-    )
-    return train, test
 
 
 def _features_path(month: str, data_cfg: dict) -> Path:
@@ -114,6 +90,8 @@ def run_split(
     month: str,
     test_size: float | None = None,
     *,
+    use_sample: bool | None = None,
+    max_rows: int | None = None,
     features_config: dict | None = None,
     data_config: dict | None = None,
 ) -> tuple[Path, Path]:
@@ -128,6 +106,10 @@ def run_split(
 
     if test_size is None:
         test_size = float(feast_cfg.get("test_size", 0.2))
+    if use_sample is None:
+        use_sample = bool(feast_cfg.get("use_sample", False))
+    if max_rows is None and use_sample:
+        max_rows = int(feast_cfg.get("max_rows", 1000))
 
     features_path = _features_path(month, data_cfg)
     if not features_path.is_file():
@@ -138,6 +120,7 @@ def run_split(
     test_path = out_dir / "test.parquet"
 
     full_df = pd.read_parquet(features_path)
+    full_df = limit_games(full_df, use_sample=use_sample, max_rows=max_rows)
     entity_cols = _entity_columns(full_df)
     entity_df = full_df[entity_cols].copy()
 

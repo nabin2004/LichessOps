@@ -94,6 +94,31 @@ def test_train_without_cv(synthetic_parquet, monkeypatch: pytest.MonkeyPatch) ->
     assert (result.run_dir / "model.joblib").exists()
 
 
+def test_train_with_sampling_caps_games(synthetic_parquet, monkeypatch: pytest.MonkeyPatch) -> None:
+    out_dir, month = synthetic_parquet
+    tiny_cfg = _base_cfg(use_cv=False)
+    tiny_cfg["training"]["use_sample"] = True
+    tiny_cfg["training"]["max_rows"] = 8
+    tiny_cfg["training"]["test_size"] = 0.25
+    _patch_training_env(monkeypatch, out_dir, month, tiny_cfg)
+
+    with patch("lichess_models.train.load_config", return_value=tiny_cfg):
+        with patch("lichess_models.evaluate.load_config", return_value=tiny_cfg):
+            with patch("lichess_models.dataset.load_config", return_value=tiny_cfg):
+                result = run_train(
+                    month,
+                    config=tiny_cfg,
+                    run_id="run-sample",
+                    use_sample=True,
+                    max_rows=8,
+                )
+
+    metadata = json.loads((result.run_dir / "train_metadata.json").read_text())
+    assert metadata["use_sample"] is True
+    assert metadata["max_rows"] == 8
+    assert metadata["n_train_games"] <= 8
+
+
 def test_train_evaluate_analyze_smoke(synthetic_parquet, monkeypatch: pytest.MonkeyPatch) -> None:
     out_dir, month = synthetic_parquet
     tiny_cfg = _base_cfg(use_cv=True)
