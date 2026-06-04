@@ -3,4 +3,4 @@ server:
   port: 8082
 
 model:
-  uri: models:/lichess-outcome-predictor/Staging
+  uri: models:/lichess-outcome-predictor/4

@@ -37,3 +37,4 @@ def test_inference_row_has_all_feature_columns() -> None:
     numeric, categorical = feature_columns()
     for col in numeric + categorical:
         assert col in row.columns
+    assert row["player_color"].iloc[0] == 0

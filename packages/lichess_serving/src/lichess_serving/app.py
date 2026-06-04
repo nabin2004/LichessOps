@@ -52,8 +52,9 @@ def _load_model() -> Any:
         import mlflow
     except ImportError as exc:
         raise RuntimeError(
-            "MLflow is required for registry URIs. Install with: "
-            "uv sync --package lichess-serving --extra ml"
+            "MLflow is required for registry URIs. Install mlflow in the runtime "
+            "environment (see services/airflow/Dockerfile) or set MODEL_URI to a "
+            ".joblib path."
         ) from exc
 
     tracking = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")

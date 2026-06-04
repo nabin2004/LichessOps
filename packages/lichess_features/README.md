@@ -2,6 +2,15 @@
 
 Workspace package for feature materialization and chronological splits (Feast-oriented).
 
+### Dependencies and Feast runtime
+
+`uv sync` does **not** install Feast. Feast 0.46 pins `numpy<2` and `pandas<3`, which conflict with the workspace (`numpy>=2`, `pandas>=3`). Production installs Feast out-of-band (see `services/airflow/Dockerfile` and the Docker `feast` profile).
+
+Commands that call Feast (`apply`, `split`, etc.) need Feast in the **runtime** environment:
+
+- Docker `feast-cli` or Airflow worker image
+- Or a manual install matching the Airflow pattern (`feast==0.46.0` with `--no-deps` plus its transitive deps)
+
 ### CLI
 
 From the repo root:

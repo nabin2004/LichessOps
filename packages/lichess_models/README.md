@@ -22,11 +22,7 @@ Hold-out test metrics from `run_evaluate` are always written to the run director
 
 ### MLflow
 
-Install the tracking client:
-
-```bash
-uv sync --package lichess-models --extra ml
-```
+`uv sync` does **not** install the MLflow client. MLflow pins `pandas<3` and `pyarrow<24`, which conflict with this workspace. Use the Airflow worker image, or install `mlflow==3.12.0` with dependency overrides as in `services/airflow/Dockerfile`.
 
 Set `MLFLOW_TRACKING_URI` (default `http://localhost:5000`). The `train` command logs parameters, train/cv score, test metrics, artifacts, and registers the model unless `--no-mlflow` is passed.
 

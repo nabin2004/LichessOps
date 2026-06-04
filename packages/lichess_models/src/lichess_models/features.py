@@ -114,8 +114,10 @@ def build_inference_row(request: dict[str, Any], config: dict | None = None) -> 
         "session_bucket": request.get("session_bucket", "Afternoon"),
     }
 
+    # Request keys already normalized above must not be overwritten by raw strings.
+    _normalized_keys = frozenset({"player_color"})
     for key, value in request.items():
-        if key in all_cols:
+        if key in all_cols and key not in _normalized_keys:
             defaults[key] = value
 
     row = {col: defaults.get(col) for col in all_cols}

@@ -18,9 +18,6 @@ dependencies = [
     "scikit-learn>=1.8.0",
 ]
 
-[project.optional-dependencies]
-ml = ["mlflow>=2.0"]
-
 [dependency-groups]
 dev = ["pytest>=8.0"]
 

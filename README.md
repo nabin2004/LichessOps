@@ -26,6 +26,8 @@ uv lock
 uv sync --all-packages
 ```
 
+Use `uv sync`, not `uv pip install -e .` on the repo root (the root project is not a setuptools package). Feast is installed only in Docker/Airflow; see `packages/lichess_features/README.md`.
+
 Run package CLIs:
 
 ```bash

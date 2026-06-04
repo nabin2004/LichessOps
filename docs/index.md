@@ -25,6 +25,6 @@ uv run lichess-serving --port 8082
 
 Prometheus and Grafana (profile `monitoring`) scrape `http://host.docker.internal:8082/metrics`. Evidently drift reports: `docker compose --profile evidently up -d --build` with `reference.parquet` and `current.parquet` in `services/evidently/data/`.
 
-Training logs to MLflow by default (test metrics, model artifact, registry). Install the client with `uv sync --package lichess-models --extra ml`, set `MLFLOW_TRACKING_URI` (default `http://localhost:5000`), and start the tracking server with `docker compose --profile core --profile ml up -d`. Use `--no-mlflow` to skip tracking on local runs. Hold-out test metrics (`test_*` in MLflow) are the authoritative evaluation signal when CV is disabled.
+Training logs to MLflow by default (test metrics, model artifact, registry). The MLflow Python client is not installed by `uv sync` (version pins conflict with `pandas>=3` / `pyarrow>=24`); use the Airflow image or the install pattern in `services/airflow/Dockerfile`. Set `MLFLOW_TRACKING_URI` (default `http://localhost:5000`), and start the tracking server with `docker compose --profile core --profile ml up -d`. Use `--no-mlflow` to skip tracking on local runs. Hold-out test metrics (`test_*` in MLflow) are the authoritative evaluation signal when CV is disabled.
 
 Set `MODEL_URI` for serving from the registry. See [Package organization](./package-organization.md) for the full pipeline map.
