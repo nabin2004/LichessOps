@@ -18,17 +18,26 @@ from __future__ import annotations
 
 import hashlib
 import html
+import io
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from lichess_libs.shared import load_config
 from lichess_libs.shared.artifact_manager import get_artifact_path
 from lichess_libs.shared.logger import get_logger
+from lichess_libs.shared.s3 import (
+    raw_bucket_name,
+    raw_object_key,
+    skip_if_verified,
+    upload_stream,
+)
+from lichess_libs.shared.storage_config import raw_prefix
 
 _logger = get_logger(__name__)
 
@@ -74,6 +83,7 @@ def _download_options(config: dict[str, Any] | None = None) -> dict[str, Any]:
         "chunk_size_bytes": int(dl.get("chunk_size_bytes", DEFAULT_CHUNK_SIZE)),
         "verify_checksum": bool(dl.get("verify_checksum", True)),
         "skip_existing": bool(dl.get("skip_existing", True)),
+        "direct_to_minio": bool(dl.get("direct_to_minio", True)),
     }
 
 
@@ -238,6 +248,124 @@ def _file_sha256(path: Path, chunk_size: int) -> str:
     return h.hexdigest()
 
 
+class _RestartFullDownload(Exception):
+    """Signal that a resumed download must restart from byte zero."""
+
+
+class _ChunkIterReader(io.IOBase):
+    """Adapt an iterator of byte chunks into a file-like object for S3 upload."""
+
+    def __init__(self, chunks: Iterator[bytes]) -> None:
+        self._iter = chunks
+        self._buf = b""
+
+    def read(self, amt: int = -1) -> bytes:
+        if amt is None or amt < 0:
+            parts = [self._buf]
+            self._buf = b""
+            for chunk in self._iter:
+                parts.append(chunk)
+            return b"".join(parts)
+        while len(self._buf) < amt:
+            try:
+                self._buf += next(self._iter)
+            except StopIteration:
+                break
+        result = self._buf[:amt]
+        self._buf = self._buf[amt:]
+        return result
+
+
+def _iter_download_chunks(
+    url: str,
+    *,
+    chunk_size: int,
+    resume_part_path: Path | None = None,
+) -> Iterator[bytes]:
+    """Yield byte chunks from *url*, optionally resuming via HTTP Range."""
+    start = 0
+    if resume_part_path is not None and resume_part_path.exists():
+        start = resume_part_path.stat().st_size
+
+    if start > 0:
+        req = Request(url, headers={"Range": f"bytes={start}-"})
+    else:
+        if resume_part_path is not None and resume_part_path.exists():
+            resume_part_path.unlink()
+        req = Request(url)
+
+    try:
+        resp = urlopen(req, timeout=600)
+    except (URLError, HTTPError) as e:
+        raise RuntimeError(f"HTTP request failed for {url!r}") from e
+
+    try:
+        status = resp.status
+        if start > 0 and status == 416:
+            _logger.info(
+                "HTTP 416 for resume; assuming download already complete"
+            )
+            return
+
+        if start > 0 and status == 200:
+            _logger.info("Server ignored Range; restarting full download")
+            resp.close()
+            if resume_part_path is not None:
+                resume_part_path.unlink(missing_ok=True)
+            raise _RestartFullDownload()
+
+        if start > 0 and status != 206:
+            raise RuntimeError(
+                f"Expected 206 Partial Content when resuming, got HTTP {status}"
+            )
+        if start == 0 and status not in (200, 206):
+            raise RuntimeError(f"Unexpected HTTP status {status} for {url!r}")
+
+        if start == 0 and resume_part_path is not None and resume_part_path.exists():
+            resume_part_path.unlink(missing_ok=True)
+
+        while True:
+            chunk = resp.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+    finally:
+        resp.close()
+
+
+def _chunks_with_progress(
+    chunks: Iterator[bytes],
+    *,
+    desc: str,
+    progress: bool,
+    initial: int = 0,
+) -> Iterator[bytes]:
+    """Wrap *chunks* with an optional tqdm progress bar."""
+    if not progress:
+        yield from chunks
+        return
+
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        yield from chunks
+        return
+
+    pbar = tqdm(
+        initial=initial,
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+        desc=desc,
+    )
+    try:
+        for chunk in chunks:
+            pbar.update(len(chunk))
+            yield chunk
+    finally:
+        pbar.close()
+
+
 def _stream_download_url(
     url: str,
     part_path: Path,
@@ -249,82 +377,28 @@ def _stream_download_url(
     part_path.parent.mkdir(parents=True, exist_ok=True)
     start = part_path.stat().st_size if part_path.exists() else 0
 
-    if start > 0:
-        req = Request(url, headers={"Range": f"bytes={start}-"})
-    else:
-        if part_path.exists():
-            part_path.unlink()
-        req = Request(url)
-
-    try:
-        resp = urlopen(req, timeout=600)
-    except (URLError, HTTPError) as e:
-        raise RuntimeError(f"HTTP request failed for {url!r}") from e
-
-    try:
-        status = resp.status
-        # Range not satisfiable — often means we already have the full object.
-        if start > 0 and status == 416:
-            _logger.info(
-                "HTTP 416 for resume of %s; assuming download already complete",
-                part_path.name,
-            )
-            return
-
-        if start > 0 and status == 200:
-            _logger.info(
-                "Server ignored Range; restarting full download for %s",
-                part_path.name,
-            )
-            resp.close()
-            part_path.unlink(missing_ok=True)
-            return _stream_download_url(
-                url, part_path, chunk_size=chunk_size, progress=progress
-            )
-
-        if start > 0 and status != 206:
-            raise RuntimeError(
-                f"Expected 206 Partial Content when resuming, got HTTP {status}"
-            )
-        if start == 0 and status not in (200, 206):
-            raise RuntimeError(f"Unexpected HTTP status {status} for {url!r}")
-
-        mode = "ab" if start > 0 and status == 206 else "wb"
-        if mode == "wb" and part_path.exists():
-            part_path.unlink()
-
-        total_hdr = resp.headers.get("Content-Length")
-        total_i = int(total_hdr) if total_hdr and total_hdr.isdigit() else None
-
-        pbar = None
-        if progress:
-            try:
-                from tqdm import tqdm
-
-                pbar = tqdm(
-                    total=total_i + start if total_i is not None else None,
-                    initial=start,
-                    unit="B",
-                    unit_scale=True,
-                    unit_divisor=1024,
-                    desc=part_path.name,
-                )
-            except ImportError:
-                pbar = None
-
+    def _write(resume: bool) -> None:
+        resume_start = part_path.stat().st_size if resume and part_path.exists() else 0
+        mode = "ab" if resume and resume_start > 0 else "wb"
+        chunks = _iter_download_chunks(
+            url,
+            chunk_size=chunk_size,
+            resume_part_path=part_path if resume else None,
+        )
+        chunks = _chunks_with_progress(
+            chunks,
+            desc=part_path.name,
+            progress=progress,
+            initial=resume_start,
+        )
         with open(part_path, mode) as out:
-            while True:
-                chunk = resp.read(chunk_size)
-                if not chunk:
-                    break
+            for chunk in chunks:
                 out.write(chunk)
-                if pbar is not None:
-                    pbar.update(len(chunk))
 
-        if pbar is not None:
-            pbar.close()
-    finally:
-        resp.close()
+    try:
+        _write(resume=start > 0)
+    except _RestartFullDownload:
+        _write(resume=False)
 
 
 def download_month(
@@ -403,6 +477,81 @@ def download_month(
 
     part.replace(dest)
     return dest
+
+
+def download_month_to_minio(
+    month: str,
+    *,
+    skip_existing: bool | None = None,
+    verify: bool | None = None,
+    base_url: str | None = None,
+    category: str | None = None,
+    chunk_size_bytes: int | None = None,
+    config: dict[str, Any] | None = None,
+    progress: bool = True,
+) -> str:
+    """Stream one monthly shard directly to MinIO; return ``s3://`` URI."""
+    opts = _download_options(config)
+    bu = (base_url or opts["base_url"]).rstrip("/")
+    cat = category or opts["category"]
+    chunk = chunk_size_bytes or opts["chunk_size_bytes"]
+    skip = opts["skip_existing"] if skip_existing is None else skip_existing
+    do_verify = opts["verify_checksum"] if verify is None else verify
+
+    cfg = config if config is not None else load_config("lichess_data")
+    filename = shard_filename(month)
+    bucket = raw_bucket_name(cfg)
+    key = raw_object_key(raw_prefix(cfg), filename)
+
+    expected: str | None = None
+    if do_verify:
+        sha_map = fetch_sha256_map(cat, base_url=bu, config=config)
+        expected = sha_map.get(filename)
+        if expected is None:
+            raise ValueError(
+                f"No SHA256 entry for {filename!r} in published checksums"
+            )
+        if skip:
+            existing = skip_if_verified(bucket, key, expected)
+            if existing is not None:
+                return existing
+    elif skip:
+        from lichess_libs.shared.s3 import object_exists, s3_uri
+
+        if object_exists(bucket, key):
+            uri = s3_uri(bucket, key)
+            _logger.info("Skipping existing object (checksum verify off): %s", uri)
+            return uri
+
+    file_url = f"{bu}/{cat}/{filename}"
+    _logger.info("Streaming download %s -> s3://%s/%s", file_url, bucket, key)
+
+    chunks = _iter_download_chunks(file_url, chunk_size=chunk, resume_part_path=None)
+    chunks = _chunks_with_progress(chunks, desc=filename, progress=progress)
+    reader: BinaryIO = _ChunkIterReader(chunks)
+
+    metadata = {"sha256": expected} if expected else None
+    try:
+        uri = upload_stream(
+            reader,
+            bucket,
+            key,
+            expected_sha256=expected if do_verify else None,
+            metadata=metadata,
+            multipart_threshold=chunk,
+        )
+    except Exception:
+        _logger.exception("Direct-to-MinIO download failed")
+        raise
+
+    if do_verify and expected is not None:
+        _logger.info("Checksum OK for %s", filename)
+    return uri
+
+
+def download_previous_month_to_minio(**kwargs: Any) -> str:
+    """Stream the prior calendar month's shard to MinIO."""
+    return download_month_to_minio(resolve_previous_month(), **kwargs)
 
 
 def download_previous_month(**kwargs: Any) -> Path:

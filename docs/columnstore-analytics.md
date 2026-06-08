@@ -17,7 +17,7 @@ Downstream ML steps are **unchanged**: `preprocess` → Feast split → validate
 
 ```mermaid
 flowchart LR
-    download[download] --> upload[upload]
+    download["download (streams to MinIO)"] --> upload["upload (no-op if verified)"]
     upload --> spark[spark-transform]
     spark --> minio[(MinIO Parquet)]
     minio --> sync[columnstore-sync]
@@ -29,7 +29,7 @@ flowchart LR
     evidently[Evidently API] --> cs
 ```
 
-**ELT flow:** load raw shard to MinIO → star-schema transform → sync into ColumnStore → export wide Parquet for ML.
+**ELT flow:** stream raw shard to MinIO → star-schema transform → sync into ColumnStore → export wide Parquet for ML.
 
 ## Docker startup
 
@@ -84,7 +84,8 @@ Local export cache: `artifacts/lichess_data/processed/YYYY-MM.parquet` (from `co
 ## CLI commands
 
 ```bash
-# Full ELT path for one month
+# Full ELT path for one month (download streams directly to MinIO by default)
+uv run lichess-data download --month 2013-01
 uv run lichess-data upload --month 2013-01
 uv run lichess-data spark-transform --month 2013-01
 uv run lichess-data columnstore-sync --month 2013-01

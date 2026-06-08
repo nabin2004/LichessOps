@@ -10,8 +10,10 @@ from .s3 import (
     s3_client,
     s3_endpoint,
     s3_uri,
+    skip_if_verified,
     storage_backend,
     upload_file,
+    upload_stream,
 )
 from .slack import is_slack_configured, send_slack_alert, send_slack_message, slack_webhook_url
 
@@ -33,9 +35,11 @@ __all__ = [
     "send_slack_alert",
     "send_slack_message",
     "setup_logging",
+    "skip_if_verified",
     "slack_webhook_url",
     "storage_backend",
     "upload_file",
+    "upload_stream",
 ]
 
 

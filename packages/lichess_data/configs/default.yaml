@@ -5,6 +5,7 @@ download:
   chunk_size_bytes: 8388608
   verify_checksum: true
   skip_existing: true
+  direct_to_minio: true
 
 storage:
   backend: minio

@@ -1,6 +1,6 @@
 # Lichess monthly database downloader
 
-This document describes [`lichess_data.extract.lichess_downloader`](../packages/lichess_data/src/lichess_data/extract/lichess_downloader.py)—how it fetches monthly **standard-rated** game archives from [database.lichess.org](https://database.lichess.org/), verifies them, and where files land locally.
+This document describes [`lichess_data.extract.lichess_downloader`](../packages/lichess_data/src/lichess_data/extract/lichess_downloader.py)—how it fetches monthly **standard-rated** game archives from [database.lichess.org](https://database.lichess.org/), verifies them, and lands them in MinIO or local artifacts.
 
 Related concepts:
 
@@ -15,9 +15,9 @@ Related concepts:
 Each month Lichess publishes a single **non-cumulative** shard: a Zstandard-compressed PGN file named like `lichess_db_standard_rated_YYYY-MM.pgn.zst`, plus aggregated checksums at `{category}/sha256sums.txt` (typically `standard/sha256sums.txt`). The downloader:
 
 1. Optionally discovers available months by parsing the public index HTML.
-2. Streams the shard over HTTPS into a `{filename}.part` file (resumable).
-3. Verifies **SHA256** against the official list.
-4. Renames the `.part` file atomically to the final name.
+2. Streams the shard over HTTPS (default **8 MiB** chunks; the full file is never held in memory).
+3. Verifies **SHA256** against the official list during or after the transfer.
+4. Writes to **MinIO** directly (default when `storage.backend: minio`) or to a local `.part` file with resume support (when `--local` or `--dest` is used).
 
 Orchestration (for example monthly Airflow) should call this step before any decompression / PGN parsing / Parquet transform.
 
@@ -44,7 +44,8 @@ Common flags:
 | `--list` | Print shards from the live index (tabular on stdout) |
 | `--no-verify` | Skip checksum verification (avoid in production) |
 | `--no-skip-existing` | Force re-download even if the destination file exists |
-| `--dest PATH` | Override output directory (default: artifact layout; see below) |
+| `--dest PATH` | Override output directory (forces local download; see below) |
+| `--local` | Download to local `artifacts/` even when storage backend is MinIO |
 | `--no-progress` | Disable `tqdm` progress bar |
 | `--base-url URL` | Override `https://database.lichess.org` |
 
@@ -62,9 +63,14 @@ download:
   chunk_size_bytes: 8388608
   verify_checksum: true
   skip_existing: true
+  direct_to_minio: true
 ```
 
-When `--dest` is omitted, files are written under:
+When `storage.backend` is `minio` and `direct_to_minio: true` (the default), `lichess-data download` streams the shard directly to MinIO via the S3 API and prints an `s3://` URI — no local copy is written under `artifacts/`. The separate `lichess-data upload` step becomes an idempotent no-op when the object is already present with matching SHA256 metadata.
+
+Use `--local` or `--dest PATH` to force the legacy local download path (resumable via `.part` files).
+
+When `--dest` is omitted and local download is used, files are written under:
 
 `get_artifact_path("lichess_data", <output_subpath>, create=True)`
 
@@ -91,8 +97,10 @@ Import from `lichess_data.extract.lichess_downloader` or the package re-exports 
 | `fetch_monthly_index(...)` | HTTP GET index + parse (`category` defaults from config) |
 | `parse_sha256sums_text(text)` | Parse checksum file body → `dict[filename, hex]` |
 | `fetch_sha256_map(...)` | HTTP GET `standard/sha256sums.txt`-style URL + parse |
-| `download_month(month, *, dest_dir=..., verify=..., ...)` | End-to-end download + verify → `Path` |
-| `download_previous_month(**kwargs)` | Convenience for scheduled runs |
+| `download_month(month, *, dest_dir=..., verify=..., ...)` | End-to-end local download + verify → `Path` |
+| `download_month_to_minio(month, *, verify=..., ...)` | Stream directly to MinIO + verify → `s3://` URI |
+| `download_previous_month(**kwargs)` | Convenience for scheduled local runs |
+| `download_previous_month_to_minio(**kwargs)` | Convenience for scheduled MinIO runs |
 
 **Errors:** mismatched SHA256 raises `ChecksumMismatchError` (includes `filename`, `expected`, `actual`). Network or missing index structure surface as `RuntimeError` / `ValueError` with short messages suitable for logs.
 
@@ -100,7 +108,14 @@ Import from `lichess_data.extract.lichess_downloader` or the package re-exports 
 
 ## Download behavior details
 
-### Streaming and resume
+### Direct-to-MinIO (default)
+
+- When `storage.backend: minio` and `direct_to_minio: true`, bytes stream from Lichess HTTPS straight into MinIO via S3 multipart upload.
+- SHA256 is verified during the upload stream; mismatch deletes the partial object and raises `ChecksumMismatchError`.
+- Verified objects store `sha256` in S3 user metadata; `skip_existing` checks that metadata before re-downloading.
+- **No HTTP Range resume** for direct-to-MinIO transfers — use `--local` if you need resumable downloads on disk.
+
+### Local streaming and resume (`--local` or `--dest`)
 
 - Data is read in chunks (default **8 MiB**) via `urllib.request`; the full file is never held in memory.
 - Active download path: `{destination}/{basename}.part`.
@@ -127,7 +142,7 @@ Airflow typically runs something equivalent to:
 PYTHONPATH=<repo_root> uv run lichess-data download --previous-month
 ```
 
-Bake the same **workspace root** and **Python environment** into the worker image, or install `lichess-data` and ensure `libs` is importable (today the repo assumes `PYTHONPATH` includes the workspace root). After download, the ELT pipeline uploads the shard with `lichess-data upload` — see [ColumnStore analytics](./columnstore-analytics.md).
+Bake the same **workspace root** and **Python environment** into the worker image, or install `lichess-data` and ensure `libs` is importable (today the repo assumes `PYTHONPATH` includes the workspace root). With `direct_to_minio: true`, the download task lands the shard in MinIO; the subsequent `upload` task is a fast idempotent skip. See [ColumnStore analytics](./columnstore-analytics.md).
 
 ---
 

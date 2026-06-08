@@ -9,7 +9,7 @@ from pathlib import Path
 import chess.pgn
 import zstandard as zstd
 
-from lichess_libs.shared import get_artifact_path, load_config
+from lichess_libs.shared import get_artifact_path, is_minio_backend, load_config
 
 from lichess_data.extract import lichess_downloader as ld
 from lichess_data.extract.parquet_stream_writer import ParquetStreamWriter
@@ -61,6 +61,11 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Directory for the .pgn.zst (default: artifact path from config)",
+    )
+    dl.add_argument(
+        "--local",
+        action="store_true",
+        help="Download to local artifacts/ even when storage backend is MinIO",
     )
     dl.add_argument(
         "--no-progress",
@@ -225,10 +230,24 @@ def _cmd_download(args: argparse.Namespace, cfg: dict) -> int:
     if args.base_url is not None:
         kw["base_url"] = args.base_url
 
+    dl_cfg = cfg.get("download") or {}
+    use_minio = (
+        is_minio_backend(cfg)
+        and dl_cfg.get("direct_to_minio", True)
+        and not args.local
+        and args.dest is None
+    )
+
     if args.previous_month:
-        path = ld.download_previous_month(**kw)
+        if use_minio:
+            result = ld.download_previous_month_to_minio(**kw)
+        else:
+            result = ld.download_previous_month(**kw)
     elif args.month:
-        path = ld.download_month(args.month, **kw)
+        if use_minio:
+            result = ld.download_month_to_minio(args.month, **kw)
+        else:
+            result = ld.download_month(args.month, **kw)
     else:
         print(
             "error: specify --month YYYY-MM, --previous-month, or --list",
@@ -236,7 +255,7 @@ def _cmd_download(args: argparse.Namespace, cfg: dict) -> int:
         )
         return 2
 
-    print(path.resolve())
+    print(result if use_minio else result.resolve())
     return 0
 
 

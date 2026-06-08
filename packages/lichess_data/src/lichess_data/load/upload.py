@@ -12,7 +12,7 @@ from lichess_libs.shared import (
     load_config,
     upload_file,
 )
-from lichess_libs.shared.s3 import raw_bucket_name, raw_object_key
+from lichess_libs.shared.s3 import raw_bucket_name, raw_object_key, skip_if_verified
 from lichess_libs.shared.storage_config import raw_prefix
 
 from lichess_data.extract import lichess_downloader as ld
@@ -36,18 +36,30 @@ def upload_raw_shard(
         _logger.info("Storage backend is local; skipping upload for %s", month)
         return None
 
+    filename = ld.shard_filename(month)
+    bucket = raw_bucket_name(cfg)
+    key = raw_object_key(raw_prefix(cfg), filename)
+
+    try:
+        sha_map = ld.fetch_sha256_map(config=cfg)
+        expected = sha_map.get(filename)
+        if expected is not None:
+            existing = skip_if_verified(bucket, key, expected)
+            if existing is not None:
+                return existing
+    except RuntimeError:
+        _logger.warning("Could not fetch checksums for upload skip check")
+
     if local_path is None:
         dl_cfg = cfg.get("download") or {}
         subpath = dl_cfg.get("output_subpath", "raw/pgn")
         base = get_artifact_path("lichess_data", subpath, create=False)
-        local_path = base / ld.shard_filename(month)
+        local_path = base / filename
 
     local_path = Path(local_path).resolve()
     if not local_path.is_file():
         raise FileNotFoundError(f"Raw shard not found: {local_path}")
 
-    bucket = raw_bucket_name(cfg)
-    key = raw_object_key(raw_prefix(cfg), local_path.name)
     uri = upload_file(local_path, bucket, key, skip_if_unchanged=True)
     _logger.info("Uploaded raw shard: %s", uri)
     return uri
