@@ -8,15 +8,23 @@ RUN groupadd -g "${USER_ID}" appuser \
     && useradd -lm -u "${USER_ID}" -g "${USER_ID}" appuser
 
 WORKDIR /app
-COPY src/app_fastapi /app/app_fastapi
+
+COPY libs /app/libs
+COPY services/evidently/src/app_fastapi /app/app_fastapi
+
 RUN pip install --no-cache-dir \
     "evidently>=0.7,<1" \
     "fastapi>=0.115,<1" \
     "pandas>=2.2,<3" \
     "pyarrow>=16,<25" \
+    "pymysql>=1.1.0" \
+    "sqlalchemy>=2.0.0" \
     "uvicorn[standard]>=0.32,<1" \
+    && pip install --no-cache-dir /app/libs \
     && mkdir -p /app/data /app/reports \
     && chown -R appuser:appuser /app
+
+ENV PYTHONPATH=/app
 
 USER appuser
 EXPOSE 5000

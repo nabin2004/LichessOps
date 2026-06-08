@@ -1,8 +1,8 @@
 # Airflow ingestion DAGs
 
-This document describes the Airflow DAG that automates the `lichess_data` ingestion pipeline using local Compose services and optional MinIO/DuckDB ELT.
+This document describes the Airflow DAG that automates the `lichess_data` ingestion pipeline using local Compose services and optional MinIO/ColumnStore ELT.
 
-See [Object storage and DuckDB](./object-storage-and-duckdb.md) for bucket layout and CLI details.
+See [ColumnStore analytics](./columnstore-analytics.md) for bucket layout and CLI details.
 
 ## DAG: `lichess_monthly_ingestion`
 
@@ -25,12 +25,12 @@ Feast `FileSource` in `lichess_features/feast_repo` must use `timestamp_field="u
 | `run_validation` | `true` | Run checksum validation and Great Expectations checks. |
 | `run_training` | `true` | Run `lichess-models train` after split (logs to MLflow). |
 | `use_cv` | `false` | When true, pass `--cv` for cross-validation and hyperparameter search (slow on large shards). |
-| `use_elt` | `true` | When true, run MinIO upload → spark-transform → duckdb-sync instead of legacy `extract`. |
+| `use_elt` | `true` | When true, run MinIO upload → spark-transform → columnstore-sync instead of legacy `extract`. |
 
 ### Task graph (ELT path, `use_elt=true`)
 
 ```
-download → upload → spark-transform → duckdb-sync → preprocess → feast split → validate → validate-ge → train
+download → upload → spark-transform → columnstore-sync → preprocess → feast split → validate → validate-ge → train
 ```
 
 Legacy path (`use_elt=false`):
@@ -41,11 +41,13 @@ download → extract → preprocess → feast split → validate → validate-ge
 
 ## Local setup
 
-1. Start MinIO and MLflow when using ELT and scheduled training (recommended):
+1. Start MinIO, ColumnStore, and MLflow when using ELT and scheduled training (recommended):
 
 ```bash
 docker compose --profile core --profile ml up -d
 ```
+
+ColumnStore (`mcs1`) is included in profile `core`. Allow up to 3 minutes on first boot for provisioning.
 
 2. Copy env example (optional but recommended):
 
@@ -66,7 +68,7 @@ Paths are relative to `services/airflow/` (where the Airflow compose file lives)
 3. Install Python deps into the Airflow image. For local dev, set `_PIP_ADDITIONAL_REQUIREMENTS` in `services/airflow/.env` or a root `.env`:
 
 ```bash
-_PIP_ADDITIONAL_REQUIREMENTS=chess==1.10.0 zstandard==0.23.0 pandas==2.2.2 pyarrow==16.1.0 feast==0.46.0 boto3 duckdb
+_PIP_ADDITIONAL_REQUIREMENTS=chess==1.10.0 zstandard==0.23.0 pandas==2.2.2 pyarrow==16.1.0 feast==0.46.0 boto3 pymysql sqlalchemy
 ```
 
 For a longer-lived setup, build a custom Airflow image that bakes these dependencies in.
@@ -107,8 +109,9 @@ See [Great Expectations validation](./great-expectations.md) for details.
 | Raw shard (local) | `artifacts/lichess_data/raw/pgn/lichess_db_standard_rated_YYYY-MM.pgn.zst` |
 | Raw shard (MinIO) | `s3://lichess-raw/pgn/lichess_db_standard_rated_YYYY-MM.pgn.zst` |
 | Star schema (MinIO) | `s3://lichess-processed/fact_games/year=YYYY/month=MM/` etc. |
-| Processed wide parquet | `artifacts/lichess_data/processed/YYYY-MM.parquet` (from `duckdb-sync` or legacy `extract`) |
-| DuckDB catalog | `artifacts/lichess_data/duckdb/lichess.duckdb` |
+| Processed wide parquet | `artifacts/lichess_data/processed/YYYY-MM.parquet` (from `columnstore-sync` or legacy `extract`) |
+| ColumnStore catalog | MariaDB `lichess_analytics` database on `mcs1` (host port `3307`) |
+| Inference predictions | `batch_predictions`, `prediction_logs`, `inference_runs` tables in ColumnStore |
 | Preprocessed features | `artifacts/lichess_data/preprocessed/YYYY-MM/features.parquet` |
 | Train/test | `artifacts/lichess_data/preprocessed/YYYY-MM/train.parquet`, `test.parquet` |
 | Model runs | `artifacts/lichess_models/{run_id}/` (also logged to MLflow when tracking is enabled) |

@@ -84,7 +84,7 @@ def _use_elt(params: dict) -> bool:
 
 @dag(
     dag_id="lichess_monthly_ingestion",
-    description="Monthly Lichess ingestion: ELT (MinIO/Spark/DuckDB) or local extract path.",
+    description="Monthly Lichess ingestion: ELT (MinIO/Spark/ColumnStore) or local extract path.",
     schedule="0 3 1 * *",
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -151,12 +151,12 @@ def lichess_monthly_ingestion():
         _run_cmd(cmd)
 
     @task.python
-    def duckdb_sync(month: str | None, **context) -> None:
+    def columnstore_sync(month: str | None, **context) -> None:
         params = _get_params(context)
         if not _use_elt(params):
-            print("ELT disabled; skipping duckdb-sync", flush=True)
+            print("ELT disabled; skipping columnstore-sync", flush=True)
             return
-        cmd = _build_data_cmd("duckdb-sync", month)
+        cmd = _build_data_cmd("columnstore-sync", month)
         _run_cmd(cmd)
 
     @task.python
@@ -223,7 +223,7 @@ def lichess_monthly_ingestion():
     downloaded = download_shard.expand(month=months)
     uploaded = upload_raw.expand(month=months)
     transformed = spark_transform.expand(month=months)
-    synced = duckdb_sync.expand(month=months)
+    synced = columnstore_sync.expand(month=months)
     extracted = extract_parquet.expand(month=months)
     preprocessed = preprocess_features.expand(month=months)
     split = feast_split.expand(month=months)

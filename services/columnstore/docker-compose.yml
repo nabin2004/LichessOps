@@ -1,0 +1,44 @@
+# MariaDB ColumnStore single-node analytics store (profile `core`).
+# After first start, verify: mysql -h 127.0.0.1 -P 3307 -u lichess -p lichess_analytics
+services:
+  columnstore:
+    image: mariadb/columnstore:23.02.4
+    container_name: mcs1
+    hostname: mcs1
+    profiles: [core]
+    shm_size: 512m
+    restart: unless-stopped
+    ports:
+      - "${MARIADB_COLUMNSTORE_PORT:-3307}:3306"
+    environment:
+      PM1: mcs1
+      MARIADB_ROOT_PASSWORD: ${MARIADB_COLUMNSTORE_ROOT_PASSWORD:-C0lumnStore!}
+      MARIADB_COLUMNSTORE_USER: ${MARIADB_COLUMNSTORE_USER:-lichess}
+      MARIADB_COLUMNSTORE_PASSWORD: ${MARIADB_COLUMNSTORE_PASSWORD:-Lichess_Analytics1!}
+      MARIADB_COLUMNSTORE_DATABASE: ${MARIADB_COLUMNSTORE_DATABASE:-lichess_analytics}
+    volumes:
+      - columnstore_data1:/var/lib/columnstore/data1
+      - columnstore_data2:/var/lib/columnstore/data2
+      - columnstore_data3:/var/lib/columnstore/data3
+      - columnstore_storagemanager:/var/lib/columnstore/storagemanager
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - ./scripts/entrypoint-wrapper.sh:/entrypoint-wrapper.sh:ro
+    entrypoint: ["/bin/bash", "/entrypoint-wrapper.sh"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -u admin -p\"$$MARIADB_ROOT_PASSWORD\" --silent && test -f /etc/columnstore/.lichess_schema_applied",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 180s
+    networks:
+      - lichess-net
+
+volumes:
+  columnstore_data1: {}
+  columnstore_data2: {}
+  columnstore_data3: {}
+  columnstore_storagemanager: {}

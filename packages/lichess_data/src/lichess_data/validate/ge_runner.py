@@ -81,7 +81,7 @@ def validate_ge_processed_parquet(
 ) -> GEValidationResult:
     """Validate a processed parquet file using Great Expectations.
 
-    Accepts both legacy extract output and ``wide_games`` exports from DuckDB sync.
+    Accepts both legacy extract output and ``wide_games`` exports from ColumnStore sync.
     """
     del config
     parquet_path = Path(path).expanduser().resolve()

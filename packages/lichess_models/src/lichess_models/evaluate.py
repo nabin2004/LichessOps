@@ -53,6 +53,44 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_proba: np.ndarray)
     return metrics
 
 
+def persist_predictions_to_columnstore(
+    predictions: pd.DataFrame,
+    *,
+    run_id: str,
+    month: str,
+    model_uri: str | None = None,
+    metrics: dict[str, float] | None = None,
+) -> int:
+    """Write batch evaluation predictions and run metadata to ColumnStore."""
+    from lichess_libs.shared.columnstore import (
+        insert_batch_predictions,
+        ping,
+        record_inference_run,
+    )
+
+    if not ping():
+        log.warning("ColumnStore unavailable; skipping prediction persistence")
+        return 0
+
+    count = insert_batch_predictions(
+        predictions,
+        run_id=run_id,
+        month=month,
+        model_uri=model_uri,
+        source="evaluate",
+    )
+    record_inference_run(
+        run_id=run_id,
+        month=month,
+        source="evaluate",
+        row_count=count,
+        model_uri=model_uri,
+        metrics=metrics,
+    )
+    log.info("Persisted %s batch predictions to ColumnStore (run_id=%s)", count, run_id)
+    return count
+
+
 def run_evaluate(
     month: str,
     run_dir: Path,
@@ -61,6 +99,8 @@ def run_evaluate(
     split: str = "test",
     use_sample: bool | None = None,
     max_rows: int | None = None,
+    persist_columnstore: bool = False,
+    model_uri: str | None = None,
 ) -> EvalResult:
     cfg = config or load_config("lichess_models")
     training_cfg = cfg.get("training") or {}
@@ -92,6 +132,9 @@ def run_evaluate(
     predictions["y_true"] = y.values
     predictions["y_pred"] = y_pred
     predictions["pred_display"] = [OUTCOME_DISPLAY[int(v)] for v in y_pred]
+    predictions["prob_lose"] = y_proba[:, 0]
+    predictions["prob_win"] = y_proba[:, 1]
+    predictions["prob_draw"] = y_proba[:, 2]
 
     out_dir = run_dir
     (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
@@ -106,6 +149,22 @@ def run_evaluate(
         metrics["balanced_accuracy"],
         metrics["macro_f1"],
     )
+
+    if persist_columnstore:
+        run_id = run_dir.name
+        resolved_uri = model_uri
+        if resolved_uri is None:
+            metadata_path = run_dir / "train_metadata.json"
+            if metadata_path.is_file():
+                resolved_uri = json.loads(metadata_path.read_text()).get("model_uri")
+        persist_predictions_to_columnstore(
+            predictions,
+            run_id=run_id,
+            month=month,
+            model_uri=resolved_uri,
+            metrics=metrics,
+        )
+
     return EvalResult(metrics=metrics, confusion=cm, report=report, predictions=predictions)
 
 

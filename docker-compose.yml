@@ -16,4 +16,4 @@ include:
   - path: ./services/feast/docker-compose.yml
   - path: ./services/evidently/docker-compose.yml
   - path: ./services/great_expec/docker-compose.yml
-  - path: ./services/duckdb/docker-compose.yml
+  - path: ./services/columnstore/docker-compose.yml

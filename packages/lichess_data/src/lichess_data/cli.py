@@ -14,7 +14,7 @@ from lichess_libs.shared import get_artifact_path, load_config
 from lichess_data.extract import lichess_downloader as ld
 from lichess_data.extract.parquet_stream_writer import ParquetStreamWriter
 from lichess_data.extract.pgn_parser import PGNParser
-from lichess_data.load.duckdb_sync import sync_month
+from lichess_data.load.columnstore_sync import sync_month
 from lichess_data.load.upload import upload_raw_shard
 from lichess_data.preprocessing import run_pipeline
 from lichess_data.spark.run import run_transform
@@ -173,11 +173,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Write outputs under artifacts/ instead of object storage",
     )
 
-    dd = sub.add_parser(
-        "duckdb-sync",
-        help="Load processed Parquet into DuckDB and export ML-ready wide parquet",
+    cs = sub.add_parser(
+        "columnstore-sync",
+        help="Load processed Parquet into MariaDB ColumnStore and export ML-ready wide parquet",
     )
-    _add_month_args(dd)
+    _add_month_args(cs)
 
     args = parser.parse_args(argv)
     cfg = load_config("lichess_data")
@@ -196,8 +196,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_upload(args, cfg)
     if args.cmd == "spark-transform":
         return _cmd_spark_transform(args, cfg)
-    if args.cmd == "duckdb-sync":
-        return _cmd_duckdb_sync(args, cfg)
+    if args.cmd == "columnstore-sync":
+        return _cmd_columnstore_sync(args, cfg)
 
     return 2
 
@@ -428,7 +428,7 @@ def _cmd_spark_transform(args: argparse.Namespace, cfg: dict) -> int:
     return 0
 
 
-def _cmd_duckdb_sync(args: argparse.Namespace, cfg: dict) -> int:
+def _cmd_columnstore_sync(args: argparse.Namespace, cfg: dict) -> int:
     month = _resolve_month(args)
     if month is None:
         print("error: specify --month/--previous-month", flush=True)

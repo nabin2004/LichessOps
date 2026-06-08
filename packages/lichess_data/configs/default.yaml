@@ -11,7 +11,12 @@ storage:
   raw_bucket: lichess-raw
   processed_bucket: lichess-processed
   raw_prefix: pgn
-  duckdb_path: duckdb/lichess.duckdb
+  columnstore:
+    host: localhost
+    port: 3307
+    database: lichess_analytics
+    user: lichess
+    password: Lichess_Analytics1!
 
 extract:
   # Input is passed on the CLI; output defaults under this artifact subpath.

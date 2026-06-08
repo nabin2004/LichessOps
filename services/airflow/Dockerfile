@@ -18,6 +18,7 @@ RUN python -m pip install --no-cache-dir uv \
         /opt/airflow/project/libs \
         /opt/airflow/project/packages/lichess_data \
         /opt/airflow/project/packages/lichess_models \
+        pymysql sqlalchemy \
     && printf 'pandas>=3.0.3\npyarrow>=24.0.0\n' > /tmp/uv-overrides.txt \
     && uv pip install --no-cache-dir --overrides /tmp/uv-overrides.txt mlflow==3.12.0 \
     && uv pip install --no-cache-dir --no-deps feast==0.46.0 \

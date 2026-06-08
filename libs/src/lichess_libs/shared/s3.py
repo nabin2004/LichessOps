@@ -149,3 +149,35 @@ def storage_backend(config: dict[str, Any] | None = None) -> str:
 def is_minio_backend(config: dict[str, Any] | None = None) -> bool:
     return storage_backend(config) == "minio"
 
+
+def list_s3_keys(bucket: str, prefix: str, *, suffix: str = "") -> list[str]:
+    """List object keys under a bucket prefix."""
+    client = s3_client()
+    keys: list[str] = []
+    paginator = client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix.rstrip("/")):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            if suffix and not key.endswith(suffix):
+                continue
+            keys.append(key)
+    return keys
+
+
+def read_parquet_prefix(bucket: str, prefix: str) -> "pd.DataFrame":
+    """Download and concatenate Parquet objects under an S3 prefix."""
+    import tempfile
+
+    import pandas as pd
+
+    keys = list_s3_keys(bucket, prefix, suffix=".parquet")
+    if not keys:
+        raise FileNotFoundError(f"No parquet objects under s3://{bucket}/{prefix}")
+    frames = []
+    with tempfile.TemporaryDirectory(prefix="lichess_parquet_") as tmp_dir:
+        tmp = Path(tmp_dir)
+        for index, key in enumerate(keys):
+            local = download_file(bucket, key, tmp / f"part-{index:05d}.parquet")
+            frames.append(pd.read_parquet(local))
+    return pd.concat(frames, ignore_index=True)
+

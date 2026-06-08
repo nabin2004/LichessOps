@@ -29,6 +29,7 @@ DEFAULT_REFERENCE = os.environ.get(
 DEFAULT_CURRENT = os.environ.get(
     "EVIDENTLY_CURRENT_PATH", str(DATA_DIR / "current.parquet")
 )
+DATA_SOURCE = os.environ.get("EVIDENTLY_DATA_SOURCE", "columnstore").strip().lower()
 
 # Alert thresholds (overridable via env)
 DRIFT_THRESHOLD = float(os.environ.get("DRIFT_THRESHOLD", "0.5"))
@@ -47,6 +48,8 @@ class DriftRequest(BaseModel):
     current_path: str | None = None
     report_name: str | None = None
     sample_size: int = Field(default=5000, ge=100, le=100_000)
+    month: str | None = None
+    data_source: str | None = None
 
 
 class ClassificationRequest(BaseModel):
@@ -56,6 +59,8 @@ class ClassificationRequest(BaseModel):
     prediction_col: str = "prediction"
     report_name: str | None = None
     sample_size: int = Field(default=5000, ge=100, le=100_000)
+    month: str | None = None
+    data_source: str | None = None
 
 
 class SliceRequest(BaseModel):
@@ -65,6 +70,8 @@ class SliceRequest(BaseModel):
     slice_cols: list[str] = Field(default=["game_type"])
     report_name: str | None = None
     sample_size: int = Field(default=5000, ge=100, le=100_000)
+    month: str | None = None
+    data_source: str | None = None
 
 
 class PredictionLogEntry(BaseModel):
@@ -99,7 +106,69 @@ def _resolve_data_path(path: str) -> Path:
     return candidate
 
 
-def _load_frame(path: Path, sample_size: int) -> pd.DataFrame:
+def _resolve_data_source(data_source: str | None) -> str:
+    return (data_source or DATA_SOURCE).strip().lower()
+
+
+def _load_frame_from_columnstore(
+    *,
+    month: str | None,
+    sample_size: int,
+    reference: bool = False,
+) -> pd.DataFrame:
+    try:
+        from lichess_libs.shared.columnstore import (
+            fetch_batch_predictions_as_monitoring_frame,
+            query_dataframe,
+        )
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="ColumnStore client not available in evidently container",
+        ) from exc
+
+    if month:
+        if reference:
+            sql = """
+                SELECT y_true AS target, y_pred AS prediction, player_elo, opponent_elo,
+                       eco, game_type
+                FROM batch_predictions
+                WHERE month = %s
+                ORDER BY id ASC
+                LIMIT %s
+            """
+            frame = query_dataframe(sql, (month, sample_size))
+        else:
+            frame = fetch_batch_predictions_as_monitoring_frame(month, limit=sample_size)
+    else:
+        frame = query_dataframe(
+            """
+            SELECT y_true AS target, y_pred AS prediction, player_elo, opponent_elo,
+                   eco, game_type
+            FROM batch_predictions
+            ORDER BY id DESC
+            LIMIT %s
+            """,
+            (sample_size,),
+        )
+    if frame.empty:
+        raise HTTPException(status_code=404, detail="No batch predictions found in ColumnStore")
+    if len(frame) > sample_size:
+        frame = frame.sample(n=sample_size, random_state=42)
+    return frame
+
+
+def _load_frame(
+    path: Path,
+    sample_size: int,
+    *,
+    month: str | None = None,
+    data_source: str | None = None,
+    reference: bool = False,
+) -> pd.DataFrame:
+    if _resolve_data_source(data_source) == "columnstore":
+        return _load_frame_from_columnstore(month=month, sample_size=sample_size, reference=reference)
+
     if path.suffix == ".csv":
         frame = pd.read_csv(path)
     else:
@@ -186,8 +255,19 @@ async def root() -> dict[str, str]:
 
 @app.post("/reports/drift")
 async def generate_drift_report(body: DriftRequest) -> dict[str, str]:
-    reference = _load_frame(_resolve_data_path(body.reference_path or DEFAULT_REFERENCE), body.sample_size)
-    current = _load_frame(_resolve_data_path(body.current_path or DEFAULT_CURRENT), body.sample_size)
+    reference = _load_frame(
+        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+        reference=True,
+    )
+    current = _load_frame(
+        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+    )
 
     report_name = body.report_name or f"drift-{_stamp()}"
     html_path = _write_html_report(reference, current, [DataDriftPreset()], report_name)
@@ -207,8 +287,19 @@ async def generate_drift_report(body: DriftRequest) -> dict[str, str]:
 
 @app.post("/reports/data-quality")
 async def generate_data_quality_report(body: DriftRequest) -> dict[str, Any]:
-    reference = _load_frame(_resolve_data_path(body.reference_path or DEFAULT_REFERENCE), body.sample_size)
-    current = _load_frame(_resolve_data_path(body.current_path or DEFAULT_CURRENT), body.sample_size)
+    reference = _load_frame(
+        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+        reference=True,
+    )
+    current = _load_frame(
+        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+    )
 
     report_name = body.report_name or f"data-quality-{_stamp()}"
     html_path = _write_html_report(reference, current, [DataSummaryPreset()], report_name)
@@ -241,8 +332,19 @@ async def generate_data_quality_report(body: DriftRequest) -> dict[str, Any]:
 
 @app.post("/reports/target-drift")
 async def generate_target_drift_report(body: ClassificationRequest) -> dict[str, Any]:
-    reference = _load_frame(_resolve_data_path(body.reference_path or DEFAULT_REFERENCE), body.sample_size)
-    current = _load_frame(_resolve_data_path(body.current_path or DEFAULT_CURRENT), body.sample_size)
+    reference = _load_frame(
+        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+        reference=True,
+    )
+    current = _load_frame(
+        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+    )
 
     for col in (body.target_col, body.prediction_col):
         for df, label in ((reference, "reference"), (current, "current")):
@@ -276,8 +378,19 @@ async def generate_target_drift_report(body: ClassificationRequest) -> dict[str,
 
 @app.post("/reports/prediction-drift")
 async def generate_prediction_drift_report(body: ClassificationRequest) -> dict[str, Any]:
-    reference = _load_frame(_resolve_data_path(body.reference_path or DEFAULT_REFERENCE), body.sample_size)
-    current = _load_frame(_resolve_data_path(body.current_path or DEFAULT_CURRENT), body.sample_size)
+    reference = _load_frame(
+        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+        reference=True,
+    )
+    current = _load_frame(
+        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+    )
 
     for col in (body.prediction_col,):
         for df, label in ((reference, "reference"), (current, "current")):
@@ -315,8 +428,19 @@ async def generate_prediction_drift_report(body: ClassificationRequest) -> dict[
 
 @app.post("/reports/classification-performance")
 async def generate_classification_performance_report(body: ClassificationRequest) -> dict[str, Any]:
-    reference = _load_frame(_resolve_data_path(body.reference_path or DEFAULT_REFERENCE), body.sample_size)
-    current = _load_frame(_resolve_data_path(body.current_path or DEFAULT_CURRENT), body.sample_size)
+    reference = _load_frame(
+        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+        reference=True,
+    )
+    current = _load_frame(
+        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+    )
 
     for col in (body.target_col, body.prediction_col):
         for df, label in ((reference, "reference"), (current, "current")):
@@ -364,7 +488,12 @@ async def generate_classification_performance_report(body: ClassificationRequest
 @app.post("/reports/performance-slices")
 async def generate_slice_performance_report(body: SliceRequest) -> dict[str, Any]:
     data_path = _resolve_data_path(body.data_path or DEFAULT_CURRENT)
-    df = _load_frame(data_path, body.sample_size)
+    df = _load_frame(
+        data_path,
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+    )
 
     for col in [body.target_col, body.prediction_col, *body.slice_cols]:
         if col not in df.columns:
@@ -403,8 +532,19 @@ async def generate_slice_performance_report(body: SliceRequest) -> dict[str, Any
 
 @app.post("/reports/schema-validation")
 async def schema_validation(body: DriftRequest) -> dict[str, Any]:
-    reference = _load_frame(_resolve_data_path(body.reference_path or DEFAULT_REFERENCE), body.sample_size)
-    current = _load_frame(_resolve_data_path(body.current_path or DEFAULT_CURRENT), body.sample_size)
+    reference = _load_frame(
+        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+        reference=True,
+    )
+    current = _load_frame(
+        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        body.sample_size,
+        month=body.month,
+        data_source=body.data_source,
+    )
 
     ref_cols = set(reference.columns)
     cur_cols = set(current.columns)
@@ -454,18 +594,48 @@ async def log_prediction(entry: PredictionLogEntry) -> dict[str, str]:
     with log_file.open("a") as f:
         f.write(json.dumps(record) + "\n")
 
+    if _resolve_data_source(None) == "columnstore":
+        try:
+            from lichess_libs.shared.columnstore import insert_prediction_log
+
+            outcome_map = {0: "0", 1: "1", 2: "½"}
+            probs = entry.probabilities or []
+            insert_prediction_log(
+                player_elo=entry.player_elo,
+                opponent_elo=entry.opponent_elo,
+                predicted_outcome=outcome_map.get(entry.prediction, str(entry.prediction)),
+                probabilities={
+                    "lose": probs[0] if len(probs) > 0 else None,
+                    "win": probs[1] if len(probs) > 1 else None,
+                    "draw": probs[2] if len(probs) > 2 else None,
+                },
+                game_type=entry.game_type,
+                source="evidently",
+            )
+        except Exception:
+            pass
+
     return {"status": "logged", "log_file": str(log_file)}
 
 
 @app.get("/monitor/prediction-logs")
-async def get_prediction_logs(limit: int = 100) -> dict[str, Any]:
+async def get_prediction_logs(limit: int = 100, data_source: str | None = None) -> dict[str, Any]:
+    if _resolve_data_source(data_source) == "columnstore":
+        try:
+            from lichess_libs.shared.columnstore import fetch_prediction_logs
+
+            logs = fetch_prediction_logs(limit=limit)
+            return {"logs": logs, "total": len(logs), "source": "columnstore"}
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"ColumnStore read failed: {exc}") from exc
+
     log_file = LOGS_DIR / "prediction_logs.jsonl"
     if not log_file.is_file():
-        return {"logs": [], "total": 0}
+        return {"logs": [], "total": 0, "source": "parquet"}
 
     lines = log_file.read_text().strip().splitlines()
     logs = [json.loads(line) for line in lines[-limit:]]
-    return {"logs": logs, "total": len(lines)}
+    return {"logs": logs, "total": len(lines), "source": "parquet"}
 
 
 # ---------------------------------------------------------------------------

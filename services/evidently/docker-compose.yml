@@ -1,8 +1,8 @@
 services:
   evidently-api:
     build:
-      context: .
-      dockerfile: src/Dockerfile.fastapi
+      context: ${EVIDENTLY_PROJECT_DIR:-../..}
+      dockerfile: services/evidently/src/Dockerfile.fastapi
       args:
         USER_ID: ${USER_ID:-1000}
     image: lichess-evidently-api:latest
@@ -21,6 +21,12 @@ services:
       EVIDENTLY_REPORTS_DIR: /app/reports
       EVIDENTLY_REFERENCE_PATH: /app/data/reference.parquet
       EVIDENTLY_CURRENT_PATH: /app/data/current.parquet
+      EVIDENTLY_DATA_SOURCE: ${EVIDENTLY_DATA_SOURCE:-columnstore}
+      MARIADB_COLUMNSTORE_HOST: ${MARIADB_COLUMNSTORE_HOST:-mcs1}
+      MARIADB_COLUMNSTORE_PORT: ${MARIADB_COLUMNSTORE_PORT:-3306}
+      MARIADB_COLUMNSTORE_USER: ${MARIADB_COLUMNSTORE_USER:-lichess}
+      MARIADB_COLUMNSTORE_PASSWORD: ${MARIADB_COLUMNSTORE_PASSWORD:-Lichess_Analytics1!}
+      MARIADB_COLUMNSTORE_DATABASE: ${MARIADB_COLUMNSTORE_DATABASE:-lichess_analytics}
     depends_on:
       evidently-postgres:
         condition: service_healthy

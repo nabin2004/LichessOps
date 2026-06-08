@@ -16,11 +16,25 @@ from .s3 import (
 )
 
 
-def duckdb_path(config: dict[str, Any]) -> Path:
-    storage = config.get("storage") or {}
-    rel = Path(str(storage.get("duckdb_path", "duckdb/lichess.duckdb")))
-    base = get_artifact_path("lichess_data", rel.parent.as_posix(), create=True)
-    return base / rel.name
+def columnstore_settings(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Resolve MariaDB ColumnStore connection settings from config and env."""
+    import os
+
+    storage = (config or {}).get("storage") or {}
+    cs = storage.get("columnstore") or {}
+    return {
+        "host": os.getenv("MARIADB_COLUMNSTORE_HOST", str(cs.get("host", "localhost"))),
+        "port": int(os.getenv("MARIADB_COLUMNSTORE_PORT", str(cs.get("port", 3307)))),
+        "user": os.getenv("MARIADB_COLUMNSTORE_USER", str(cs.get("user", "lichess"))),
+        "password": os.getenv(
+            "MARIADB_COLUMNSTORE_PASSWORD",
+            str(cs.get("password", "Lichess_Analytics1!")),
+        ),
+        "database": os.getenv(
+            "MARIADB_COLUMNSTORE_DATABASE",
+            str(cs.get("database", "lichess_analytics")),
+        ),
+    }
 
 
 def raw_prefix(config: dict[str, Any]) -> str:

@@ -6,7 +6,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from prometheus_client import Counter, Gauge
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -96,8 +96,33 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok" if loaded else "degraded", model_loaded=loaded)
 
 
+def _persist_prediction_async(
+    request: PredictRequest,
+    predicted_outcome: str,
+    probabilities: dict[str, float],
+) -> None:
+    try:
+        from lichess_libs.shared.columnstore import insert_prediction_log
+
+        insert_prediction_log(
+            player_elo=request.player_elo,
+            opponent_elo=request.opponent_elo,
+            predicted_outcome=predicted_outcome,
+            probabilities=probabilities,
+            player_color=request.player_color,
+            eco=request.eco,
+            game_type=request.time_control,
+            model_uri=_model_uri(),
+            source="serving",
+        )
+    except Exception as exc:
+        import logging
+
+        logging.getLogger(__name__).warning("ColumnStore prediction log failed: %s", exc)
+
+
 @app.post("/predict", response_model=PredictResponse)
-def predict(request: PredictRequest) -> PredictResponse:
+def predict(request: PredictRequest, background_tasks: BackgroundTasks) -> PredictResponse:
     try:
         pipeline = _load_model()
     except Exception as exc:
@@ -114,8 +139,15 @@ def predict(request: PredictRequest) -> PredictResponse:
 
     PREDICTIONS_TOTAL.inc()
 
-    return PredictResponse(
+    response = PredictResponse(
         predicted_outcome=OUTCOME_DISPLAY[pred],
         probabilities=probabilities,
         recommended_opening_score=probabilities.get("win"),
     )
+    background_tasks.add_task(
+        _persist_prediction_async,
+        request,
+        response.predicted_outcome,
+        probabilities,
+    )
+    return response

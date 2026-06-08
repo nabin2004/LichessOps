@@ -64,7 +64,7 @@ Invalid input raises **`ValueError`** with a short explanation, for example:
 
 Contents under `artifacts/` are **gitignored** except `artifacts/.gitkeep`, which keeps the directory in the repo. Do not commit large binaries there; use your storage or pipeline conventions for long-term retention.
 
-When `LICHESS_STORAGE_BACKEND=minio`, MinIO holds authoritative raw and star-schema Parquet; local paths under `artifacts/lichess_data/` act as an export cache (for example `processed/YYYY-MM.parquet` from DuckDB sync). See [Object storage and DuckDB](./object-storage-and-duckdb.md).
+When `LICHESS_STORAGE_BACKEND=minio`, MinIO holds authoritative raw and star-schema Parquet; local paths under `artifacts/lichess_data/` act as an export cache (for example `processed/YYYY-MM.parquet` from ColumnStore sync). See [ColumnStore analytics](./columnstore-analytics.md).
 
 ## See also
 

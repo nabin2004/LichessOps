@@ -45,10 +45,20 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Skip MLflow logging and registration",
     )
+    train_p.add_argument(
+        "--no-persist-columnstore",
+        action="store_true",
+        help="Skip persisting evaluation predictions to ColumnStore",
+    )
 
     eval_p = sub.add_parser("evaluate", help="Evaluate a trained model on the test split")
     _add_month_arg(eval_p)
     eval_p.add_argument("--run-dir", required=True, help="Path to training run directory")
+    eval_p.add_argument(
+        "--persist-columnstore",
+        action="store_true",
+        help="Persist test-set predictions to MariaDB ColumnStore",
+    )
 
     analyze_p = sub.add_parser("analyze", help="Generate opening weakness report")
     _add_month_arg(analyze_p)
@@ -101,6 +111,7 @@ def _cmd_train(args: argparse.Namespace) -> int:
         result.run_dir,
         use_sample=use_sample,
         max_rows=args.max_rows,
+        persist_columnstore=not args.no_persist_columnstore,
     )
     run_analyze(month, result.run_dir)
 
@@ -127,7 +138,11 @@ def _cmd_train(args: argparse.Namespace) -> int:
 def _cmd_evaluate(args: argparse.Namespace) -> int:
     month = _resolve_month(args)
     run_dir = Path(args.run_dir)
-    result = run_evaluate(month, run_dir)
+    result = run_evaluate(
+        month,
+        run_dir,
+        persist_columnstore=bool(args.persist_columnstore),
+    )
     print(json.dumps(result.metrics, indent=2))
     return 0
 

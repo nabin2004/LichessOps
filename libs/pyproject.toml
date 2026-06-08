@@ -4,6 +4,11 @@ version = "0.1.0"
 description = "Shared helpers for the Lichess monorepo"
 readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+    "pandas>=3.0.3",
+    "pymysql>=1.1.0",
+    "sqlalchemy>=2.0.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.6,<0.12.0"]

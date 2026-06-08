@@ -6,7 +6,7 @@ Related docs:
 
 - [Config loading](./config-loading.md) — `load_config`, YAML merge
 - [Artifact management](./artifact-management.md) — `get_run_dir`, `ARTIFACT_DIR`
-- [Object storage and DuckDB](./object-storage-and-duckdb.md) — MinIO ELT pipeline
+- [ColumnStore analytics](./columnstore-analytics.md) — MinIO ELT pipeline
 - [Logging and exceptions](./logging-and-exceptions.md)
 
 ## Current implementation status
@@ -15,7 +15,7 @@ Related docs:
 | Layer                                                | Status                                                                                                              |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | **Notebooks** (`notebook/01`–`04`)                   | Working prototypes: PGN→Parquet extract, EDA, preprocessing features, move-level analysis                           |
-| **Packages** (`packages/lichess_*`)                  | `lichess_data` and `lichess_features` pipelines are wired; ELT upload/transform/DuckDB sync in `lichess_data`; `lichess_models` trains player-centric outcome models; `lichess_serving` exposes FastAPI `/predict` |
+| **Packages** (`packages/lichess_*`)                  | `lichess_data` and `lichess_features` pipelines are wired; ELT upload/transform/ColumnStore sync in `lichess_data`; `lichess_models` trains player-centric outcome models; `lichess_serving` exposes FastAPI `/predict` |
 | **Shared libs** (`libs/shared/`)                     | Ready: `load_config`, artifact helpers, logging                                                                     |
 | **Docker Compose** (`[services/](../services/)`) | Root [`docker-compose.yml`](../docker-compose.yml) includes profiled stacks per component; shared network `lichess-net` + open-source MinIO; see [`services/README.md`](../services/README.md) |
 | **Report** (`report/content/02-pipeline-design.tex`) | Target architecture (Airflow, MinIO, Spark, DuckDB, Great Expectations, Feast, MLflow, FastAPI, Prometheus/Grafana) |
@@ -244,7 +244,7 @@ flowchart LR
 | `minio/`                   | S3-compatible buckets for raw immutable `.pgn.zst` and processed Parquet prefixes       |
 | `airflow/`                 | Scheduler and web UI; mounts DAG definitions (for example under `app/dags/` when added) |
 | `spark/`                   | Distributed transform job reading MinIO streams, writing partitioned Parquet            |
-| `duckdb/`                  | Optional long-lived analytic database over processed Parquet                            |
+| `columnstore/`             | MariaDB ColumnStore single-node analytics and inference store                           |
 | `great_expec/`             | Great Expectations metadata store (optional), GE runs via `lichess_data` CLI           |
 | `feast/`                   | Feature store coordinator plus offline configuration                                    |
 | `mlflow/`                  | Tracking server backed by filesystem or MinIO artifact store                            |
@@ -354,7 +354,7 @@ Keep task boundaries aligned with package boundaries (`lichess_data`, `lichess_f
 | ----------- | ------------------------------------------------------------ | ----------------------------------------- |
 | **Phase 0** | Notebooks touching local filesystem                          | *(none enforced)*                         |
 | **Phase 1** | Host-only CLIs: `lichess-data {extract,preprocess,validate}` | `lichess_data`                            |
-| **Phase 2** | MinIO + MLflow containers; ELT CLIs (`upload`, `spark-transform`, `duckdb-sync`) | `lichess_data`, `lichess_models`          |
+| **Phase 2** | MinIO + MLflow containers; ELT CLIs (`upload`, `spark-transform`, `columnstore-sync`) | `lichess_data`, `lichess_models`          |
 | **Phase 3** | Airflow schedules container images or Operators              | All four workspace packages               |
 | **Phase 4** | Serving image plus Prometheus scraping + Grafana dashboards  | `lichess_serving` plus observability dirs |
 
