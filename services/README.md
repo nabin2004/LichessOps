@@ -35,6 +35,13 @@ docker compose --profile core --profile ml up -d
 
 # Add metrics / dashboards (start serving on host port 8082 first)
 docker compose --profile monitoring up -d
+# Or use the helper script:
+./scripts/setup_monitoring.sh
+
+# Full end-to-end pipeline for 2013-01 (infra + ELT + train + serving + Slack alerts)
+uv run python scripts/run_pipeline.py
+# Or:
+./scripts/run_pipeline_2013_01.sh
 
 # Drift reports (place reference/current parquet under services/evidently/data/)
 docker compose --profile evidently up -d --build
@@ -128,6 +135,6 @@ Postgres and Redis for Airflow, MLflow, Evidently, GE, and Feast are **not publi
 
 - **MinIO** uses a pinned `minio/minio` image and a named volume (no bind-mounted `./data`). The `minio_setup` job uses `minio/mc` to create buckets.
 - **MLflow** no longer embeds MinIO; it depends on the shared `minio` service.
-- **Grafana** ships only inside **`services/prometheus/`**; the old standalone `services/grafana/` stack was removed.
+- **Grafana** ships only inside **`services/prometheus/`**; the old standalone `services/grafana/` stack was removed. See [docs/monitoring.md](../docs/monitoring.md) for setup and dashboards.
 - **Feast** uses the Python feature server image; run `feast apply` via the `feast-cli` service before serving features.
 - **ColumnStore** (`mcs1`) provisions automatically on first boot; see [docs/columnstore-analytics.md](../docs/columnstore-analytics.md).

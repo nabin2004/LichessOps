@@ -15,7 +15,16 @@ from .s3 import (
     upload_file,
     upload_stream,
 )
-from .slack import is_slack_configured, send_slack_alert, send_slack_message, slack_webhook_url
+from .slack import (
+    is_slack_configured,
+    send_slack_alert,
+    send_slack_failure,
+    send_slack_message,
+    send_slack_pipeline_complete,
+    send_slack_pipeline_start,
+    send_slack_success,
+    slack_webhook_url,
+)
 
 __all__ = [
     "LichessException",
@@ -33,7 +42,11 @@ __all__ = [
     "s3_endpoint",
     "s3_uri",
     "send_slack_alert",
+    "send_slack_failure",
     "send_slack_message",
+    "send_slack_pipeline_complete",
+    "send_slack_pipeline_start",
+    "send_slack_success",
     "setup_logging",
     "skip_if_verified",
     "slack_webhook_url",

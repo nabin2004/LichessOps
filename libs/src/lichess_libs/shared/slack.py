@@ -60,3 +60,51 @@ def send_slack_alert(component: str, message: str, *, level: str = "error") -> b
     """Send a formatted alert for a Lichess component."""
     text = f"[lichess/{component}] ({level}) {message}"
     return send_slack_message(text)
+
+
+def send_slack_success(
+    component: str,
+    phase: str,
+    month: str,
+    *,
+    detail: str = "",
+) -> bool:
+    """Notify Slack that a pipeline phase completed successfully."""
+    text = f":white_check_mark: [{component}] phase `{phase}` succeeded for `{month}`"
+    if detail:
+        text = f"{text}\n{detail}"
+    return send_slack_message(text)
+
+
+def send_slack_failure(
+    component: str,
+    phase: str,
+    month: str,
+    error: str,
+) -> bool:
+    """Notify Slack that a pipeline phase failed."""
+    snippet = error.strip()
+    if len(snippet) > 500:
+        snippet = f"{snippet[:497]}..."
+    text = f":x: [{component}] phase `{phase}` failed for `{month}`\n{snippet}"
+    return send_slack_message(text)
+
+
+def send_slack_pipeline_start(month: str, phases: list[str]) -> bool:
+    """Notify Slack that an end-to-end pipeline run is starting."""
+    phase_list = ", ".join(phases)
+    text = f":rocket: [pipeline] starting run for `{month}`\nPhases: {phase_list}"
+    return send_slack_message(text)
+
+
+def send_slack_pipeline_complete(
+    month: str,
+    duration_s: float,
+    *,
+    extras: str = "",
+) -> bool:
+    """Notify Slack that the full pipeline completed successfully."""
+    text = f":tada: [pipeline] completed for `{month}` in {duration_s:.1f}s"
+    if extras:
+        text = f"{text}\n{extras}"
+    return send_slack_message(text)
