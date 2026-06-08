@@ -13,6 +13,7 @@ from .s3 import (
     storage_backend,
     upload_file,
 )
+from .slack import is_slack_configured, send_slack_alert, send_slack_message, slack_webhook_url
 
 __all__ = [
     "LichessException",
@@ -21,6 +22,7 @@ __all__ = [
     "get_logger",
     "get_run_dir",
     "is_minio_backend",
+    "is_slack_configured",
     "load_config",
     "object_exists",
     "processed_bucket_name",
@@ -28,7 +30,10 @@ __all__ = [
     "s3_client",
     "s3_endpoint",
     "s3_uri",
+    "send_slack_alert",
+    "send_slack_message",
     "setup_logging",
+    "slack_webhook_url",
     "storage_backend",
     "upload_file",
 ]

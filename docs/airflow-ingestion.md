@@ -113,6 +113,54 @@ See [Great Expectations validation](./great-expectations.md) for details.
 | Train/test | `artifacts/lichess_data/preprocessed/YYYY-MM/train.parquet`, `test.parquet` |
 | Model runs | `artifacts/lichess_models/{run_id}/` (also logged to MLflow when tracking is enabled) |
 
+## Slack alerts
+
+Airflow sends failure notifications to Slack via an Incoming Webhook when `SLACK_WEBHOOK_TOKEN` is set.
+
+1. Copy the token (path after `https://hooks.slack.com/services/`) into `.env` at the repo root or `services/airflow/.env`:
+
+```bash
+SLACK_WEBHOOK_TOKEN=your-team-id/your-channel-id/your-secret-token
+```
+
+2. Rebuild and restart Airflow so the Slack provider and connection are loaded:
+
+```bash
+docker compose --profile orchestration up -d --build
+```
+
+3. Verify the connection inside the scheduler:
+
+```bash
+docker compose exec airflow-scheduler airflow connections get slackwebhook
+```
+
+4. Confirm delivery with a quick webhook test:
+
+```bash
+curl -X POST -H 'Content-type: application/json' \
+  --data '{"text":"lichess airflow test"}' \
+  "https://hooks.slack.com/services/${SLACK_WEBHOOK_TOKEN}"
+```
+
+`lichess_monthly_ingestion` uses both DAG-level and task-level `on_failure_callback` hooks (see `services/airflow/plugins/slack_callbacks.py`). Other DAGs can import the same callbacks.
+
+For non-Airflow components, use the shared helper:
+
+```python
+from lichess_libs.shared.slack import send_slack_alert
+
+send_slack_alert("lichess_data", "MinIO upload failed: connection refused")
+```
+
+Optional host-side health probes (MinIO, MLflow, serving) with Slack alerts on failure:
+
+```bash
+uv run python scripts/slack_health_check.py
+```
+
+Override probe URLs with `MINIO_HEALTH_URL`, `MLFLOW_HEALTH_URL`, and `SERVING_HEALTH_URL`.
+
 ## Troubleshooting
 
 - If Airflow does not see DAGs, confirm `AIRFLOW_PROJ_DIR=./services/airflow` and restart the stack.

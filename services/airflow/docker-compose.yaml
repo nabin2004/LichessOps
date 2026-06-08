@@ -74,6 +74,8 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+    SLACK_WEBHOOK_TOKEN: ${SLACK_WEBHOOK_TOKEN:-}
+    AIRFLOW_CONN_SLACKWEBHOOK: slackwebhook://:${SLACK_WEBHOOK_TOKEN}@
     PYTHONPATH: /opt/airflow/project:/opt/airflow/project/libs/src:/opt/airflow/project/packages/lichess_data/src:/opt/airflow/project/packages/lichess_features/src:/opt/airflow/project/packages/lichess_models/src
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks

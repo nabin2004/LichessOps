@@ -29,4 +29,5 @@ RUN python -m pip install --no-cache-dir uv \
         "PyYAML>=5.4,<7" requests "SQLAlchemy>1" "tabulate>=0.8,<1" \
         "tenacity>=7,<9" "toml>=0.10,<1" "tqdm>=4,<5" "typeguard>=4" \
         "fastapi>=0.68" "uvicorn[standard]>=0.14,<1" gunicorn uvicorn-worker \
-        prometheus_client psutil "bigtree>=0.19.2" pyjwt
+        prometheus_client psutil "bigtree>=0.19.2" pyjwt \
+    && uv pip install --no-cache-dir apache-airflow-providers-slack

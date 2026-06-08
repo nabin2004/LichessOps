@@ -5,10 +5,15 @@ import os
 import subprocess
 
 from airflow.sdk import dag, task
+from slack_callbacks import (
+    dag_failure_slack_webhook_notification,
+    task_failure_slack_webhook_notification,
+)
 
 DEFAULT_ARGS = {
     "owner": "data-eng",
     "retries": 1,
+    "on_failure_callback": [task_failure_slack_webhook_notification],
 }
 
 
@@ -84,6 +89,7 @@ def _use_elt(params: dict) -> bool:
     start_date=datetime(2024, 1, 1),
     catchup=False,
     default_args=DEFAULT_ARGS,
+    on_failure_callback=[dag_failure_slack_webhook_notification],
     tags=["lichess", "ingestion"],
     params={
         "month": "",
