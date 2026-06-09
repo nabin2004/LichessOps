@@ -1,6 +1,6 @@
 # Monitoring (Prometheus + Grafana)
 
-Basic metrics stack for the Lichess MLOps pipeline. Prometheus scrapes host and serving metrics; Grafana dashboards are auto-provisioned on startup.
+Basic metrics stack for the Lichess MLOps pipeline. Prometheus scrapes serving and host metrics; Grafana dashboards are auto-provisioned on startup.
 
 ## Quick start
 
@@ -15,6 +15,8 @@ Or manually:
 ```bash
 docker compose --profile monitoring up -d
 ```
+
+The full pipeline (`./scripts/run_pipeline_2013_01.sh`) starts the monitoring profile automatically and prints all observability URLs when it finishes.
 
 ## URLs
 
@@ -36,7 +38,7 @@ Open Grafana → **Dashboards** → browse the provisioned panels.
 ## Metrics flow
 
 ```
-lichess-serving (:8082/metrics)
+lichess-serving container (:8082/metrics)
         │
         ▼
 Prometheus (job: lichess-serving)
@@ -53,12 +55,19 @@ Prometheus (job: node-exporter)
 Grafana (Lichess System dashboard)
 ```
 
-Start the serving API so Prometheus can scrape it:
+Start serving via the pipeline (container) or manually:
 
 ```bash
+# Container (recommended — scraped in-network by Prometheus)
+export MODEL_URI=/opt/lichess/project/artifacts/lichess_models/<run_id>/model.joblib
+docker compose --profile serving up -d lichess-serving
+
+# Host-only dev fallback
 export MODEL_URI=artifacts/lichess_models/<run_id>/model.joblib
 uv run lichess-serving --port 8082
 ```
+
+For host-only serving, change the Prometheus target to `host.docker.internal:8082` in `services/prometheus/prometheus.yml`.
 
 ## Verify
 
@@ -75,8 +84,13 @@ In Prometheus → **Status → Targets**, confirm `lichess-serving`, `node-expor
 # Optional: Slack alerts per pipeline phase
 export SLACK_WEBHOOK_TOKEN=your-team-id/your-channel-id/your-secret
 
-# Run end-to-end pipeline for 2013-01 (starts infra + monitoring by default)
-uv run python scripts/run_pipeline.py --with-monitoring
+# Run end-to-end pipeline for 2013-01 (Airflow + monitoring + serving container)
+./scripts/run_pipeline_2013_01.sh
+
+# Dev smoke test
+./scripts/run_pipeline_2013_01.sh --use-sample --max-rows 1000
 ```
+
+The orchestrator prints an observability summary at the end with links to Airflow, MLflow, Grafana, Prometheus, Spark, MinIO, and the serving API.
 
 See [columnstore-analytics.md](./columnstore-analytics.md) for ELT prerequisites and [services/README.md](../services/README.md) for Compose profiles.

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 import os
 import subprocess
+import sys
 
 from airflow.sdk import dag, task
 from slack_callbacks import (
@@ -51,8 +52,7 @@ def _build_models_cmd(command: str, month: str | None, extra_args: list[str] | N
     return cmd
 
 
-def _run_cmd(cmd: list[str]) -> None:
-    print("Running:", " ".join(cmd), flush=True)
+def _package_env() -> dict[str, str]:
     env = os.environ.copy()
     package_paths = os.pathsep.join(
         [
@@ -67,7 +67,22 @@ def _run_cmd(cmd: list[str]) -> None:
         env["PYTHONPATH"] = f"{package_paths}{os.pathsep}{existing_pythonpath}"
     else:
         env["PYTHONPATH"] = package_paths
-    subprocess.run(cmd, check=True, env=env)
+    return env
+
+
+def _run_cmd(cmd: list[str]) -> None:
+    print("Running:", " ".join(cmd), flush=True)
+    subprocess.run(cmd, check=True, env=_package_env())
+
+
+def _run_cmd_capture(cmd: list[str]) -> str:
+    print("Running:", " ".join(cmd), flush=True)
+    result = subprocess.run(cmd, check=True, env=_package_env(), capture_output=True, text=True)
+    if result.stdout:
+        print(result.stdout, end="", flush=True)
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr, flush=True)
+    return result.stdout
 
 
 def _get_params(context: dict | None) -> dict:
@@ -103,6 +118,7 @@ def _use_elt(params: dict) -> bool:
         "use_sample": False,
         "max_rows": 1000,
         "use_elt": True,
+        "run_register": True,
     },
 )
 def lichess_monthly_ingestion():
@@ -204,11 +220,11 @@ def lichess_monthly_ingestion():
         _run_cmd(cmd)
 
     @task.python
-    def train_model(month: str | None, **context) -> None:
+    def train_model(month: str | None, **context) -> dict:
         params = _get_params(context)
         if not bool(params.get("run_training", True)):
             print("Training skipped by params.run_training", flush=True)
-            return
+            return {"run_dir": "", "mlflow_skipped": False}
         extra: list[str] = []
         if bool(params.get("use_cv", False)):
             extra.append("--cv")
@@ -216,6 +232,25 @@ def lichess_monthly_ingestion():
             extra.append("--use-sample")
             extra.extend(["--max-rows", str(int(params.get("max_rows", 1000)))])
         cmd = _build_models_cmd("train", month, extra)
+        stdout = _run_cmd_capture(cmd)
+        lines = [line.strip() for line in stdout.splitlines() if line.strip()]
+        run_dir = lines[0] if lines else ""
+        mlflow_skipped = any("MLflow logging skipped" in line for line in lines)
+        return {"run_dir": run_dir, "mlflow_skipped": mlflow_skipped}
+
+    @task.python
+    def register_model(train_result: dict, month: str | None, **context) -> None:
+        params = _get_params(context)
+        if not bool(params.get("run_register", True)):
+            print("Register skipped by params.run_register", flush=True)
+            return
+        if not train_result.get("mlflow_skipped"):
+            print("MLflow logging succeeded; skipping register backfill", flush=True)
+            return
+        run_dir = (train_result.get("run_dir") or "").strip()
+        if not run_dir:
+            raise ValueError("Cannot register: train did not return run_dir")
+        cmd = _build_models_cmd("register", month, ["--run-dir", run_dir])
         _run_cmd(cmd)
 
     months = resolve_months()
@@ -230,11 +265,12 @@ def lichess_monthly_ingestion():
     validated = validate_shard.expand(month=months)
     validated_ge = validate_ge.expand(month=months)
     trained = train_model.expand(month=months)
+    registered = register_model.expand(month=months, train_result=trained)
 
     downloaded >> [uploaded, extracted]
     uploaded >> transformed >> synced >> preprocessed
     extracted >> preprocessed
-    preprocessed >> split >> validated >> validated_ge >> trained
+    preprocessed >> split >> validated >> validated_ge >> trained >> registered
 
 
 lichess_monthly_ingestion()

@@ -54,7 +54,7 @@ services:
 
   spark-submit:
     image: apache/spark:4.1.2-python3
-    profiles: [pipeline]
+    profiles: [tools]
     entrypoint: ["/opt/spark/bin/spark-submit"]
     environment:
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}

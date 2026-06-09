@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -32,11 +33,30 @@ def get_store() -> FeatureStore:
 	return FeatureStore(repo_path=str(_feature_repo_path()))
 
 
+@contextmanager
+def _feast_repo_cwd(repo_path: Path):
+	"""Prepare CWD and ``sys.path`` so Feast 0.46 can import repo modules by bare name."""
+	repo_str = str(repo_path)
+	previous_cwd = os.getcwd()
+	path_inserted = repo_str not in sys.path
+	if path_inserted:
+		sys.path.insert(0, repo_str)
+	os.chdir(repo_path)
+	try:
+		yield
+	finally:
+		os.chdir(previous_cwd)
+		if path_inserted:
+			sys.path.remove(repo_str)
+
+
 def _apply_repo_definitions(store: FeatureStore) -> None:
 	"""Register all objects from ``feast_repo`` (Feast 0.46+ requires explicit objects)."""
 	from feast.repo_operations import extract_objects_for_apply_delete, parse_repo
 
-	repo = parse_repo(_feature_repo_path())
+	repo_path = _feature_repo_path()
+	with _feast_repo_cwd(repo_path):
+		repo = parse_repo(repo_path)
 	objects_to_apply, objects_to_delete, _, _ = extract_objects_for_apply_delete(
 		store.project, store.registry, repo
 	)

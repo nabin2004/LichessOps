@@ -28,7 +28,10 @@ def validate_checksum_file(
 	)
 
 	if result.ok:
-		_logger.info("Checksum OK for %s", result.filename)
+		if result.path.exists():
+			_logger.info("Checksum OK for %s", result.filename)
+		else:
+			_logger.info("Checksum OK for %s (MinIO object)", result.filename)
 		return True
 
 	if result.reason == "missing-file":

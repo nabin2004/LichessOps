@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from lichess_libs.shared import load_config
+from lichess_libs.shared import is_minio_backend, load_config
+from lichess_libs.shared.s3 import object_exists, object_sha256, raw_bucket_name, raw_object_key, skip_if_verified
+from lichess_libs.shared.storage_config import raw_prefix
 
 from lichess_data.extract import lichess_downloader as ld
 
@@ -32,6 +34,78 @@ def _download_options(config: dict[str, Any] | None = None) -> dict[str, Any]:
 		"category": str(dl.get("category", "standard")),
 		"chunk_size_bytes": int(dl.get("chunk_size_bytes", ld.DEFAULT_CHUNK_SIZE)),
 	}
+
+
+def _validate_minio_checksum(
+	filename: str,
+	*,
+	config: dict[str, Any],
+	base_url: str,
+	category: str,
+) -> ChecksumResult | None:
+	"""Validate a raw shard stored in MinIO when no local copy exists."""
+	bucket = raw_bucket_name(config)
+	key = raw_object_key(raw_prefix(config), filename)
+	path = Path(filename)
+
+	try:
+		if not object_exists(bucket, key):
+			return None
+	except Exception:
+		return None
+
+	try:
+		sha_map = ld.fetch_sha256_map(category, base_url=base_url, config=config)
+	except Exception:
+		return ChecksumResult(
+			path=path,
+			filename=filename,
+			ok=False,
+			expected=None,
+			actual=None,
+			reason="checksum-fetch-failed",
+		)
+
+	expected = sha_map.get(filename)
+	if expected is None:
+		return ChecksumResult(
+			path=path,
+			filename=filename,
+			ok=False,
+			expected=None,
+			actual=None,
+			reason="missing-checksum",
+		)
+
+	if skip_if_verified(bucket, key, expected):
+		return ChecksumResult(
+			path=path,
+			filename=filename,
+			ok=True,
+			expected=expected,
+			actual=expected,
+			reason=None,
+		)
+
+	actual = object_sha256(bucket, key)
+	if actual and actual.lower() == expected.lower():
+		return ChecksumResult(
+			path=path,
+			filename=filename,
+			ok=True,
+			expected=expected,
+			actual=actual,
+			reason=None,
+		)
+
+	return ChecksumResult(
+		path=path,
+		filename=filename,
+		ok=False,
+		expected=expected,
+		actual=actual,
+		reason="checksum-mismatch",
+	)
 
 
 def _file_sha256(path: Path, chunk_size: int) -> str:
@@ -60,6 +134,16 @@ def validate_checksum(
 
 	path = Path(file_path).expanduser().resolve()
 	if not path.exists() or not path.is_file():
+		cfg = config if config is not None else load_config("lichess_data")
+		if is_minio_backend(cfg):
+			minio_result = _validate_minio_checksum(
+				path.name,
+				config=cfg,
+				base_url=bu,
+				category=cat,
+			)
+			if minio_result is not None:
+				return minio_result
 		return ChecksumResult(
 			path=path,
 			filename=path.name,

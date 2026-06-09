@@ -1,0 +1,29 @@
+services:
+  lichess-serving:
+    build:
+      context: ${AIRFLOW_PROJECT_DIR:-../..}
+      dockerfile: services/serving/Dockerfile
+    container_name: lichess-serving
+    profiles: [serving]
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      MODEL_URI: ${MODEL_URI:-}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - ${AIRFLOW_PROJECT_DIR:-../..}:/opt/lichess/project
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - lichess-net

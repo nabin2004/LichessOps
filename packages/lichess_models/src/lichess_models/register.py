@@ -42,6 +42,12 @@ def start_training_run(
     return mlflow.start_run(run_name=run_name or f"outcome-{month}")
 
 
+def _candidate_artifact_path(name: str) -> str:
+    """Return an MLflow artifact path safe for model logging (no slashes)."""
+    safe = name.replace("/", "_").replace(":", "_")
+    return f"candidate_{safe}"
+
+
 def _load_candidate_pipelines(run_dir: Path, train_metadata: dict[str, Any]) -> dict[str, Pipeline]:
     candidates = train_metadata.get("candidates") or {}
     models_dir = run_dir / "models"
@@ -135,7 +141,7 @@ def log_training_run(
     for name, candidate_pipeline in candidate_pipelines.items():
         _log_sklearn_model(
             candidate_pipeline,
-            f"candidates/{name}",
+            _candidate_artifact_path(name),
             X_sample=X_sample,
         )
 

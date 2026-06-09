@@ -17,6 +17,7 @@ All stacks are merged from the repository root via [`docker-compose.yml`](../doc
 | **`orchestration`** | Apache Airflow (CeleryExecutor) + Postgres + Redis |
 | **`flower`**      | Celery Flower (**use with** `orchestration`, e.g. `docker compose --profile orchestration --profile flower up -d flower`) |
 | **`pipeline`**    | Spark master + worker (master UI on host **8081**; S3 env wired to MinIO) |
+| **`serving`**     | `lichess-serving` FastAPI inference API on host **8082** (scraped by Prometheus) |
 | **`feast`**       | Feast OSS feature server (Redis online store, optional Jupyter, CLI helper) |
 | **`evidently`**   | Evidently drift API (**5001**) + Streamlit (**8501**) + Postgres |
 | **`ge`**          | Postgres for Great Expectations **metadata** only (run validations from `lichess-data` on the host or another image) |
@@ -33,15 +34,17 @@ docker compose --profile core --profile ml config --quiet
 # Object store + experiment tracking
 docker compose --profile core --profile ml up -d
 
-# Add metrics / dashboards (start serving on host port 8082 first)
+# Add metrics / dashboards (or use full pipeline — monitoring starts automatically)
 docker compose --profile monitoring up -d
 # Or use the helper script:
 ./scripts/setup_monitoring.sh
 
-# Full end-to-end pipeline for 2013-01 (infra + ELT + train + serving + Slack alerts)
-uv run python scripts/run_pipeline.py
-# Or:
+# Full end-to-end pipeline for 2013-01 (containers + Airflow DAG + serving + monitoring)
 ./scripts/run_pipeline_2013_01.sh
+# Dev smoke test (sample rows):
+./scripts/run_pipeline_2013_01.sh --use-sample --max-rows 1000
+# Legacy host-side pipeline (uv run on host):
+uv run python scripts/run_pipeline.py --local
 
 # Drift reports (place reference/current parquet under services/evidently/data/)
 docker compose --profile evidently up -d --build
@@ -78,7 +81,7 @@ mysql -h 127.0.0.1 -P 3307 -u lichess -p'Lichess_Analytics1!' lichess_analytics 
 Spark submit example (cluster mode):
 
 ```bash
-docker compose --profile core --profile pipeline run --rm spark-submit \
+docker compose --profile core --profile pipeline --profile tools run --rm spark-submit \
   --master spark://spark:7077 \
   /workspace/packages/lichess_data/src/lichess_data/spark/job.py \
   --month 2013-01 --input /workspace/artifacts/lichess_data/raw/pgn/lichess_db_standard_rated_2013-01.pgn.zst --local
@@ -110,7 +113,7 @@ See [docs/airflow-ingestion.md](../docs/airflow-ingestion.md) for DAG parameters
 | ----- | ------- |
 | 9000 / 9001 | MinIO API / console |
 | 5000 | MLflow UI |
-| 8082 | Lichess serving API (host; scraped by Prometheus) |
+| 8082 | Lichess serving API (`serving` profile; scraped by Prometheus) |
 | 5001 | Evidently API |
 | 3000 | Grafana |
 | 9090 | Prometheus |
