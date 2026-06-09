@@ -22,14 +22,14 @@ WIDE_EXPORT_SQL = """
 SELECT
     fg.event,
     fg.game_id AS site,
-    dd.calendar_date AS date,
-    NULL AS round,
+    dd.calendar_date AS `date`,
+    NULL AS `round`,
     wp.username AS white,
     bp.username AS black,
     wp.title AS white_title,
     bp.title AS black_title,
-    fg.result AS result,
-    CAST(dd.calendar_date AS CHAR) AS utc_date,
+    fg.result AS `result`,
+    DATE_FORMAT(dd.calendar_date, '%Y.%m.%d') AS utc_date,
     SUBSTRING(fg.utc_datetime, 12, 8) AS utc_time,
     fg.white_elo,
     fg.black_elo,
@@ -143,7 +143,7 @@ def _delete_month(cursor, table: str, year: int, month: int) -> None:
 def _insert_dataframe(cursor, table: str, df: pd.DataFrame) -> int:
     if df.empty:
         return 0
-    frame = df.where(pd.notna(df), None)
+    frame = df.astype(object).where(pd.notna(df), None)
     columns = list(frame.columns)
     placeholders = ", ".join(["%s"] * len(columns))
     col_sql = ", ".join(columns)

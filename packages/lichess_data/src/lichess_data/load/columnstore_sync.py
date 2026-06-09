@@ -129,4 +129,12 @@ def sync_month(month: str, *, config: dict[str, Any] | None = None) -> Path:
     subpath = extract_cfg.get("output_subpath", "processed")
     out_dir = get_artifact_path("lichess_data", subpath, create=True)
     out_path = out_dir / f"{month}.parquet"
+
+    wide = tables.get("wide_games", pd.DataFrame())
+    if not wide.empty:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        wide.to_parquet(out_path, index=False)
+        _logger.info("Exported wide_games parquet to %s", out_path)
+        return out_path
+
     return export_wide_parquet(month, out_path, config=cfg, prefer_wide_table=False)

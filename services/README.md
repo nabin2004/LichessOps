@@ -121,7 +121,7 @@ See [docs/airflow-ingestion.md](../docs/airflow-ingestion.md) for DAG parameters
 | 5555 | Flower (when `flower` profile is used) |
 | 8501 | Evidently Streamlit |
 | 3307 | MariaDB ColumnStore (host) |
-| 6566 / 8888 | Feast feature server / Jupyter |
+| 6566 | 8888 | Feast feature server / Jupyter |
 
 Postgres and Redis for Airflow, MLflow, Evidently, GE, and Feast are **not published** to the host.
 
