@@ -14,6 +14,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from scripts.run_pipeline import (  # noqa: E402
+    PipelineContext,
     _parse_run_id,
     _probe,
     _probe_airflow,
@@ -21,16 +22,20 @@ from scripts.run_pipeline import (  # noqa: E402
     build_airflow_conf,
     build_data_cmd,
     build_features_cmd,
+    build_full_post_serve_phases,
     build_infra_cmd,
     build_infra_profiles,
     build_models_cmd,
     build_phases,
     build_airflow_phases,
+    build_url_manifest,
     phase_keys,
     resolve_latest_model,
+    seed_grafana_metrics,
     trigger_dag,
     wait_for_dag_run,
     wait_for_services,
+    write_url_manifest,
 )
 
 
@@ -89,6 +94,13 @@ def test_build_infra_profiles_airflow_default() -> None:
     assert profiles == ["core", "ml", "pipeline", "orchestration", "monitoring"]
 
 
+def test_build_infra_profiles_full() -> None:
+    profiles = build_infra_profiles(full=True)
+    assert "evidently" in profiles
+    assert "portal" in profiles
+    assert "monitoring" in profiles
+
+
 def test_build_infra_profiles_with_flower() -> None:
     profiles = build_infra_profiles(with_flower=True)
     assert "flower" in profiles
@@ -142,6 +154,62 @@ def test_build_airflow_phases_no_serve() -> None:
     assert keys[-1] == "observability"
 
 
+def test_build_airflow_phases_full() -> None:
+    phases = build_airflow_phases("2013-01", start_infra=False, full=True)
+    keys = phase_keys(phases)
+    assert "evidently-wait" in keys
+    assert "monitor-initial" in keys
+    assert "grafana-seed" in keys
+    assert "grafana-verify" in keys
+    assert keys[-1] == "observability"
+
+
+def test_build_full_post_serve_phases_skip_monitoring() -> None:
+    phases = build_full_post_serve_phases(no_serve=False, skip_initial_monitoring=True)
+    keys = phase_keys(phases)
+    assert "monitor-initial" not in keys
+    assert "evidently-wait" in keys
+
+
+def test_build_url_manifest(tmp_path: Path) -> None:
+    ctx = PipelineContext(
+        month="2013-01",
+        repo_root=tmp_path,
+        full=True,
+        dag_run_id="manual__test",
+        latest_drift_report="drift-test",
+    )
+    manifest = build_url_manifest(ctx)
+    services = manifest["services"]
+    assert manifest["month"] == "2013-01"
+    assert services["portal"] == "http://localhost:8502"
+    assert services["grafana_serving_dashboard"].endswith("lichess-serving")
+    assert "evidently_api" in services
+
+
+def test_write_url_manifest(tmp_path: Path) -> None:
+    ctx = PipelineContext(month="2013-01", repo_root=tmp_path, full=True)
+    path = write_url_manifest(ctx)
+    assert path.name == "urls.json"
+    assert (tmp_path / "artifacts/observability/urls.html").is_file()
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert "services" in payload
+
+
+def test_seed_grafana_metrics() -> None:
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args: object) -> bool:
+            return False
+
+    with patch("scripts.run_pipeline.urllib.request.urlopen", return_value=FakeResponse()):
+        assert seed_grafana_metrics() == 5
+
+
 def test_parse_run_id_from_table_output() -> None:
     stdout = "dag_run_id=manual__2024-01-01T00:00:00+00:00"
     assert _parse_run_id(stdout) == "manual__2024-01-01T00:00:00+00:00"
@@ -156,14 +224,16 @@ def test_trigger_dag_parses_run_id(tmp_path: Path) -> None:
     ctx = MagicMock()
     ctx.repo_root = tmp_path
 
-    unpause = MagicMock(returncode=0, stdout="", stderr="")
     trigger = MagicMock(
         returncode=0,
         stdout='{"run_id": "manual__2024-01-01T00:00:00+00:00"}',
         stderr="",
     )
 
-    with patch("scripts.run_pipeline._compose_exec", side_effect=[unpause, trigger]):
+    with (
+        patch("scripts.run_pipeline.unpause_dag"),
+        patch("scripts.run_pipeline._compose_exec", return_value=trigger),
+    ):
         run_id = trigger_dag(ctx, {"month": "2013-01"})
     assert run_id == "manual__2024-01-01T00:00:00+00:00"
 

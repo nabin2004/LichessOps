@@ -18,3 +18,4 @@ include:
   - path: ./services/great_expec/docker-compose.yml
   - path: ./services/columnstore/docker-compose.yml
   - path: ./services/serving/docker-compose.yml
+  - path: ./services/portal/docker-compose.yml

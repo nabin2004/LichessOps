@@ -49,6 +49,8 @@ class DriftRequest(BaseModel):
     report_name: str | None = None
     sample_size: int = Field(default=5000, ge=100, le=100_000)
     month: str | None = None
+    reference_month: str | None = None
+    current_month: str | None = None
     data_source: str | None = None
 
 
@@ -60,6 +62,8 @@ class ClassificationRequest(BaseModel):
     report_name: str | None = None
     sample_size: int = Field(default=5000, ge=100, le=100_000)
     month: str | None = None
+    reference_month: str | None = None
+    current_month: str | None = None
     data_source: str | None = None
 
 
@@ -71,6 +75,8 @@ class SliceRequest(BaseModel):
     report_name: str | None = None
     sample_size: int = Field(default=5000, ge=100, le=100_000)
     month: str | None = None
+    reference_month: str | None = None
+    current_month: str | None = None
     data_source: str | None = None
 
 
@@ -106,8 +112,26 @@ def _resolve_data_path(path: str) -> Path:
     return candidate
 
 
+def _optional_data_path(path: str | None, default: str, data_source: str | None) -> Path | None:
+    if _resolve_data_source(data_source) == "columnstore":
+        return None
+    return _resolve_data_path(path or default)
+
+
 def _resolve_data_source(data_source: str | None) -> str:
     return (data_source or DATA_SOURCE).strip().lower()
+
+
+def _resolve_month(
+    body: DriftRequest | ClassificationRequest | SliceRequest,
+    *,
+    reference: bool,
+) -> str | None:
+    if reference and body.reference_month:
+        return body.reference_month
+    if not reference and body.current_month:
+        return body.current_month
+    return body.month
 
 
 def _load_frame_from_columnstore(
@@ -159,7 +183,7 @@ def _load_frame_from_columnstore(
 
 
 def _load_frame(
-    path: Path,
+    path: Path | None,
     sample_size: int,
     *,
     month: str | None = None,
@@ -168,6 +192,9 @@ def _load_frame(
 ) -> pd.DataFrame:
     if _resolve_data_source(data_source) == "columnstore":
         return _load_frame_from_columnstore(month=month, sample_size=sample_size, reference=reference)
+
+    if path is None:
+        raise HTTPException(status_code=404, detail="Data path required for non-columnstore mode")
 
     if path.suffix == ".csv":
         frame = pd.read_csv(path)
@@ -256,16 +283,16 @@ async def root() -> dict[str, str]:
 @app.post("/reports/drift")
 async def generate_drift_report(body: DriftRequest) -> dict[str, str]:
     reference = _load_frame(
-        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        _optional_data_path(body.reference_path, DEFAULT_REFERENCE, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=True),
         data_source=body.data_source,
         reference=True,
     )
     current = _load_frame(
-        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        _optional_data_path(body.current_path, DEFAULT_CURRENT, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=False),
         data_source=body.data_source,
     )
 
@@ -288,16 +315,16 @@ async def generate_drift_report(body: DriftRequest) -> dict[str, str]:
 @app.post("/reports/data-quality")
 async def generate_data_quality_report(body: DriftRequest) -> dict[str, Any]:
     reference = _load_frame(
-        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        _optional_data_path(body.reference_path, DEFAULT_REFERENCE, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=True),
         data_source=body.data_source,
         reference=True,
     )
     current = _load_frame(
-        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        _optional_data_path(body.current_path, DEFAULT_CURRENT, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=False),
         data_source=body.data_source,
     )
 
@@ -333,16 +360,16 @@ async def generate_data_quality_report(body: DriftRequest) -> dict[str, Any]:
 @app.post("/reports/target-drift")
 async def generate_target_drift_report(body: ClassificationRequest) -> dict[str, Any]:
     reference = _load_frame(
-        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        _optional_data_path(body.reference_path, DEFAULT_REFERENCE, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=True),
         data_source=body.data_source,
         reference=True,
     )
     current = _load_frame(
-        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        _optional_data_path(body.current_path, DEFAULT_CURRENT, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=False),
         data_source=body.data_source,
     )
 
@@ -379,16 +406,16 @@ async def generate_target_drift_report(body: ClassificationRequest) -> dict[str,
 @app.post("/reports/prediction-drift")
 async def generate_prediction_drift_report(body: ClassificationRequest) -> dict[str, Any]:
     reference = _load_frame(
-        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        _optional_data_path(body.reference_path, DEFAULT_REFERENCE, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=True),
         data_source=body.data_source,
         reference=True,
     )
     current = _load_frame(
-        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        _optional_data_path(body.current_path, DEFAULT_CURRENT, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=False),
         data_source=body.data_source,
     )
 
@@ -429,16 +456,16 @@ async def generate_prediction_drift_report(body: ClassificationRequest) -> dict[
 @app.post("/reports/classification-performance")
 async def generate_classification_performance_report(body: ClassificationRequest) -> dict[str, Any]:
     reference = _load_frame(
-        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        _optional_data_path(body.reference_path, DEFAULT_REFERENCE, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=True),
         data_source=body.data_source,
         reference=True,
     )
     current = _load_frame(
-        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        _optional_data_path(body.current_path, DEFAULT_CURRENT, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=False),
         data_source=body.data_source,
     )
 
@@ -487,11 +514,11 @@ async def generate_classification_performance_report(body: ClassificationRequest
 
 @app.post("/reports/performance-slices")
 async def generate_slice_performance_report(body: SliceRequest) -> dict[str, Any]:
-    data_path = _resolve_data_path(body.data_path or DEFAULT_CURRENT)
+    data_path = _optional_data_path(body.data_path, DEFAULT_CURRENT, body.data_source)
     df = _load_frame(
         data_path,
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=False),
         data_source=body.data_source,
     )
 
@@ -533,16 +560,16 @@ async def generate_slice_performance_report(body: SliceRequest) -> dict[str, Any
 @app.post("/reports/schema-validation")
 async def schema_validation(body: DriftRequest) -> dict[str, Any]:
     reference = _load_frame(
-        _resolve_data_path(body.reference_path or DEFAULT_REFERENCE),
+        _optional_data_path(body.reference_path, DEFAULT_REFERENCE, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=True),
         data_source=body.data_source,
         reference=True,
     )
     current = _load_frame(
-        _resolve_data_path(body.current_path or DEFAULT_CURRENT),
+        _optional_data_path(body.current_path, DEFAULT_CURRENT, body.data_source),
         body.sample_size,
-        month=body.month,
+        month=_resolve_month(body, reference=False),
         data_source=body.data_source,
     )
 

@@ -20,6 +20,7 @@ All stacks are merged from the repository root via [`docker-compose.yml`](../doc
 | **`serving`**     | `lichess-serving` FastAPI inference API on host **8082** (scraped by Prometheus) |
 | **`feast`**       | Feast OSS feature server (Redis online store, optional Jupyter, CLI helper) |
 | **`evidently`**   | Evidently drift API (**5001**) + Streamlit (**8501**) + Postgres |
+| **`portal`**      | Unified Lichess MLOps Streamlit portal on host **8502** (predict, monitoring, service links) |
 | **`ge`**          | Postgres for Great Expectations **metadata** only (run validations from `lichess-data` on the host or another image) |
 | **`debug`**       | Airflow `airflow-cli` service |
 
@@ -39,10 +40,13 @@ docker compose --profile monitoring up -d
 # Or use the helper script:
 ./scripts/setup_monitoring.sh
 
-# Full end-to-end pipeline for 2013-01 (containers + Airflow DAG + serving + monitoring)
-./scripts/run_pipeline_2013_01.sh
+# Full end-to-end stack (Airflow + serving + monitoring + Evidently + portal)
+./scripts/run_full_pipeline.sh
 # Dev smoke test (sample rows):
-./scripts/run_pipeline_2013_01.sh --use-sample --max-rows 1000
+./scripts/run_full_pipeline.sh --use-sample --max-rows 1000
+
+# Standard pipeline (no Evidently/portal)
+./scripts/run_pipeline_2013_01.sh
 # Legacy host-side pipeline (uv run on host):
 uv run python scripts/run_pipeline.py --local
 
@@ -123,6 +127,7 @@ See [docs/airflow-ingestion.md](../docs/airflow-ingestion.md) for DAG parameters
 | 7077 | Spark master RPC |
 | 5555 | Flower (when `flower` profile is used) |
 | 8501 | Evidently Streamlit |
+| 8502 | Lichess MLOps portal (`portal` profile) |
 | 3307 | MariaDB ColumnStore (host) |
 | 6566 | 8888 | Feast feature server / Jupyter |
 

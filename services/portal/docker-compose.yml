@@ -1,0 +1,34 @@
+services:
+  lichess-portal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+    image: lichess-portal:latest
+    container_name: lichess-portal
+    profiles: [portal]
+    restart: unless-stopped
+    ports:
+      - "8502:8501"
+    environment:
+      SERVING_URL: ${PORTAL_SERVING_URL:-http://lichess-serving:8082}
+      EVIDENTLY_URL: ${PORTAL_EVIDENTLY_URL:-http://evidently-api:5000}
+      GRAFANA_URL: ${PORTAL_GRAFANA_URL:-http://grafana:3000}
+      PROMETHEUS_URL: ${PORTAL_PROMETHEUS_URL:-http://prometheus:9090}
+      MLFLOW_URL: ${PORTAL_MLFLOW_URL:-http://lichess-mlflow:5000}
+      AIRFLOW_URL: ${PORTAL_AIRFLOW_URL:-http://airflow-apiserver:8080}
+      MINIO_CONSOLE_URL: ${PORTAL_MINIO_CONSOLE_URL:-http://minio:9001}
+      SPARK_URL: ${PORTAL_SPARK_URL:-http://lichess-spark-master:8081}
+      EVIDENTLY_STREAMLIT_URL: ${PORTAL_EVIDENTLY_STREAMLIT_URL:-http://evidently-streamlit:8501}
+      EVIDENTLY_REPORTS_DIR: /app/reports
+    volumes:
+      - ../evidently/reports:/app/reports:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - lichess-net
