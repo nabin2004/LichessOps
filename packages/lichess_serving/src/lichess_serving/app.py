@@ -1,7 +1,7 @@
 """FastAPI application for game outcome prediction."""
 
 from __future__ import annotations
-
+from fastapi.middleware.cors import CORSMiddleware
 import os
 from contextlib import asynccontextmanager
 from typing import Any
@@ -79,7 +79,19 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Lichess Outcome Predictor", lifespan=lifespan)
+app = FastAPI(title="Lichess Outcome Predictor", 
+            docs_url="/docs",
+            redoc_url="/redoc",
+            openapi_url="/openapi.json",
+            lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],      # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],      # Allow all HTTP methods
+    allow_headers=["*"],      # Allow all headers
+)
 Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
 

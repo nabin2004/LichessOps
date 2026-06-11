@@ -9,7 +9,7 @@ services:
     ports:
       - "8082:8082"
     environment:
-      MODEL_URI: ${MODEL_URI:-}
+      MODEL_URI: ${MODEL_URI:-models:/lichess-outcome-predictor/7}
       MLFLOW_TRACKING_URI: http://mlflow:5000
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
@@ -22,8 +22,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    depends_on:
-      mlflow:
-        condition: service_healthy
+    # depends_on:
+    #   lichess-mlflow:
+    #     condition: service_healthy
     networks:
       - lichess-net

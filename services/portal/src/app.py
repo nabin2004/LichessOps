@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 import requests
 import streamlit as st
@@ -23,6 +24,21 @@ REPORTS_DIR = Path(os.environ.get("EVIDENTLY_REPORTS_DIR", "services/evidently/r
 
 GRAFANA_SERVING_DASH = f"{GRAFANA_URL}/d/lichess-serving/lichess-serving"
 GRAFANA_SYSTEM_DASH = f"{GRAFANA_URL}/d/lichess-system/lichess-system"
+
+
+def localhost_url(url: str) -> str:
+    """Replace hostname with 'localhost' while preserving scheme, port and path."""
+    if not url:
+        return url
+    parsed = urlparse(url)
+    # Keep the original port if present, otherwise use default for scheme
+    netloc = parsed.netloc
+    if ":" in netloc:
+        host, port = netloc.split(":", 1)
+        new_netloc = f"localhost:{port}"
+    else:
+        new_netloc = "localhost"
+    return urlunparse(parsed._replace(netloc=new_netloc))
 
 
 def probe(url: str, timeout: float = 3.0) -> bool:
@@ -69,7 +85,7 @@ tabs = st.tabs(["Predict", "Monitoring", "Services", "Grafana"])
 
 with tabs[0]:
     st.header("Game outcome prediction")
-    st.caption(f"Calls `{SERVING_URL}/predict` — no Swagger required.")
+    st.caption(f"Calls `{localhost_url(SERVING_URL)}/predict`")
 
     c1, c2 = st.columns(2)
     with c1:
@@ -121,7 +137,7 @@ with tabs[0]:
 
 with tabs[1]:
     st.header("Model monitoring")
-    st.caption(f"Evidently API at `{EVIDENTLY_URL}` — ColumnStore-backed drift and quality.")
+    st.caption(f"Evidently API at `{localhost_url(EVIDENTLY_URL)}` — ColumnStore-backed drift and quality.")
 
     ref_month = st.text_input("Reference month (YYYY-MM)", value="2013-01", key="mon_ref")
     cur_month = st.text_input("Current month (YYYY-MM)", value="2013-01", key="mon_cur")
@@ -205,7 +221,8 @@ with tabs[2]:
     for name, link, health_url in services:
         col_a, col_b = st.columns([3, 1])
         with col_a:
-            st.markdown(f"**{name}** — [{link}]({link})")
+            display_link = localhost_url(link)
+            st.markdown(f"**{name}** — [{display_link}]({display_link})")
         with col_b:
             if probe(health_url):
                 st.success("UP")
@@ -215,10 +232,18 @@ with tabs[2]:
 with tabs[3]:
     st.header("Grafana dashboards")
     st.caption("Metrics populate after predictions are served (pipeline seeds sample requests).")
-    st.link_button("Open Lichess Serving dashboard", GRAFANA_SERVING_DASH, use_container_width=True)
-    st.link_button("Open Lichess System dashboard", GRAFANA_SYSTEM_DASH, use_container_width=True)
+    st.link_button(
+        "Open Lichess Serving dashboard",
+        localhost_url(GRAFANA_SERVING_DASH),
+        use_container_width=True,
+    )
+    st.link_button(
+        "Open Lichess System dashboard",
+        localhost_url(GRAFANA_SYSTEM_DASH),
+        use_container_width=True,
+    )
     st.markdown(
-        f"- **Serving metrics**: model loaded, request rate, latency — scraped from `{SERVING_URL}/metrics`\n"
+        f"- **Serving metrics**: model loaded, request rate, latency — scraped from `{localhost_url(SERVING_URL)}/metrics`\n"
         f"- **System metrics**: CPU, memory, disk — from node-exporter\n"
-        f"- **Prometheus targets**: [{PROMETHEUS_URL}/targets]({PROMETHEUS_URL}/targets)"
+        f"- **Prometheus targets**: [{localhost_url(PROMETHEUS_URL)}/targets]({localhost_url(PROMETHEUS_URL)}/targets)"
     )

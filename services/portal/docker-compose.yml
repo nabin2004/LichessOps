@@ -13,14 +13,14 @@ services:
       - "8502:8501"
     environment:
       SERVING_URL: ${PORTAL_SERVING_URL:-http://lichess-serving:8082}
-      EVIDENTLY_URL: ${PORTAL_EVIDENTLY_URL:-http://evidently-api:5000}
+      EVIDENTLY_URL: ${PORTAL_EVIDENTLY_URL:-http://lichess-portal:8501}
       GRAFANA_URL: ${PORTAL_GRAFANA_URL:-http://grafana:3000}
       PROMETHEUS_URL: ${PORTAL_PROMETHEUS_URL:-http://prometheus:9090}
-      MLFLOW_URL: ${PORTAL_MLFLOW_URL:-http://lichess-mlflow:5000}
-      AIRFLOW_URL: ${PORTAL_AIRFLOW_URL:-http://airflow-apiserver:8080}
+      MLFLOW_URL: ${PORTAL_MLFLOW_URL:-http://mlflow:5000}
+      AIRFLOW_URL: ${PORTAL_AIRFLOW_URL:-http://airflow:8080}
       MINIO_CONSOLE_URL: ${PORTAL_MINIO_CONSOLE_URL:-http://minio:9001}
-      SPARK_URL: ${PORTAL_SPARK_URL:-http://lichess-spark-master:8081}
-      EVIDENTLY_STREAMLIT_URL: ${PORTAL_EVIDENTLY_STREAMLIT_URL:-http://evidently-streamlit:8501}
+      SPARK_URL: ${PORTAL_SPARK_URL:-http://spark:8081}
+      EVIDENTLY_STREAMLIT_URL: ${PORTAL_EVIDENTLY_STREAMLIT_URL:-http://lichess-portal:8501}
       EVIDENTLY_REPORTS_DIR: /app/reports
     volumes:
       - ../evidently/reports:/app/reports:ro
