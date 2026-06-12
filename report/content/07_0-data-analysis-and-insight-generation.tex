@@ -1,10 +1,152 @@
-\chapter{Data analysis and insight generation / reporting}
-\label{ch:analysis-and-insight-generation}
+\chapter{Data analysis and insight reporting}
+\label{ch:analysis-and-insight-reporting}
 
-\input{report2/content/01-intro}
+After ingestion of PGN data into the star schema, I identified the following measurement levels for the key attributes. The table below also explains how each level influences the choice of analysis and visualisation.
 
-\section{Evidence and reproducibility}
+\section{Research Questions}
 
-The implementation lives in the public \textbf{LichessOps} repository \githubparencite{lichessops_repo}. Services are orchestrated with Docker Compose (MinIO, Airflow, Spark, DuckDB, MLflow, Prometheus, Grafana, and supporting databases). The monthly ingestion DAG can be triggered from the Airflow UI or by running the \texttt{lichess-data} CLI with the same arguments the DAG passes. Processed Parquet and DuckDB tables, Feast feature splits, MLflow runs, and the FastAPI serving endpoint provide traceable evidence for each pipeline stage.
+\noindent
+\textbf{RQ1:} How does a player’s rating difference (WhiteElo – BlackElo) affect the game outcome?
 
-Appendix~\ref{app:code-index} indexes the main modules cited in Chapters~\ref{ch:final-pipeline-planning} and~\ref{ch:analysis-and-insight-generation}. Markers can follow any claim in those chapters to a concrete file path on GitHub.
+\vspace{0.2\baselineskip}
+\noindent
+\textbf{RQ2:} Which opening ECO codes are associated with the highest win rates for White vs Black?
+
+\vspace{0.2\baselineskip}
+\noindent
+\textbf{RQ3:} Does time control (bullet vs blitz vs rapid) influence the likelihood of a time forfeit termination?
+
+
+\section{Outlier Detection}
+Check for extreme values in ratings.
+
+Interpretation – For chess, ratings below 800 or above 2800 are rare but possible (beginners, grandmasters). They are not errors – keep them.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/001_distribution_of_white_elo_ratings.png}
+  \caption{Distribution of white player Elo ratings in the dataset.}
+  \label{fig:white_elo_distribution}
+\end{figure}
+
+\section{Data Distributions}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/002_white_elo_dist_game_results.png}
+  \caption{White Elo rating distribution segmented by game outcome (win/loss/draw).}
+  \label{fig:white_elo_game_results}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/004_rating_distribution_by_game_outcome.png}
+  \caption{Rating distribution of players (both colours) grouped by game outcome.}
+  \label{fig:rating_by_outcome}
+\end{figure}
+
+
+\section{Relationships and Patterns}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/003_relationships.png}
+  \caption{Relationships between key variables (e.g., Elo, time control, game outcome).}
+  \label{fig:relationships}
+\end{figure}
+
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/005_game_termination_by_time_control_brcket.png}
+  \caption{Game termination reasons (checkmate, resignation, timeout, etc.) across different time control brackets.}
+  \label{fig:termination_by_time}
+\end{figure}
+
+\section{MariaDB Columnar Connector}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/006_mariadb_columnar_connector.png}
+  \caption{Columnar data connector architecture for MariaDB integration.}
+  \label{fig:mariadb_connector}
+\end{figure}
+
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/008_describe_other_tables.png}
+  \caption{Statistical summaries of auxiliary tables}
+  \label{fig:describe_other_tables}
+\end{figure}
+
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/009_missing_values.png}
+  \caption{Visualisation of missing values per column across the dataset.}
+  \label{fig:missing_values}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/007_describe_fact_games.png}
+  \caption{Statistical summary of the fact_games table}
+  \label{fig:describe_fact_games}
+\end{figure}
+
+
+\section{Model Drift}
+% You need to write a short research‑based discussion. No code required, but you must reference sources.
+
+% What to write:
+
+%     Definition: Model drift = decline in prediction performance due to changes in data distribution over time.
+
+%     Data drift: Input feature distribution changes (e.g., in 2025, Lichess gets many more 800‑rated players than in 2017).
+
+%     Concept drift: Relationship changes (e.g., after an engine update, the evaluation %eval becomes less predictive of actual human results).
+
+%     Impact: Your model trained on 2017 games may mispredict outcomes for 2025 games, leading to poor user recommendations or faulty tournament seeding.
+
+%     Mitigation:
+
+%         Periodic retraining (weekly/monthly).
+
+%         Monitor PSI (Population Stability Index) on features like rating_diff, time_control.
+
+%         Use online learning (e.g., partial_fit in scikit‑learn).
+
+%         Set up an alert when accuracy drops below a threshold.
+
+% Reference (BCU Harvard):
+% Gama, J. et al. (2014) ‘A survey on concept drift adaptation’, ACM Computing Surveys, 46(4), pp. 1–37.
+
+
+\section{Concept Drift}
+
+
+\section{Comparison with initial plans}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of Initial and Final Plans with Discrepancy Analysis}
+\begin{tabular}{@{} l l l p{5cm} @{}}
+\toprule
+\textbf{Aspect} & \textbf{Initial Plan (Task 1)} & \textbf{Final Plan (Task 2/3)} & \textbf{Discrepancy \& Reason} \\
+\midrule
+Data Analysis Engine
+& DuckDB for analysis
+& MariaDB columnar connector
+& Performance and scalability needs for large datasets, as well as better integration with existing tools. \\
+\midrule
+Online Feature Store
+& MinIO object store for feature store online
+& Redis for online feature store
+& Redis's low latency and suitability for real-time feature serving, which is critical for model inference in production. \\
+\bottomrule
+\end{tabular}
+\end{table}

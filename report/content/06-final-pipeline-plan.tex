@@ -1,9 +1,92 @@
-\chapter{Final MLOps and Data Engineering Pipeline Plan}
-\label{ch:final-pipeline-planning}
+\chapter{Final Pipeline implementation and Model deployment}
+\label{ch:final-pipeline-implementation}
+
 
 The following sections document the refined pipeline plan as implemented in the LichessOps repository \githubparencite{lichessops_repo}. Each stage follows the What, Why, and How structure from the module brief, aligned with the Task~1 diagrams but updated where implementation constraints changed the approach.
 
+
+\section{Code Structure and Repository}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/images/003_monorepo_layout.png}
+  \caption{Directory layout of the GitHub repository, organised as a \texttt{uv} monorepo.}
+  \label{fig:code_structure}
+\end{figure}
+
+\label{sec:code_structure}
+Our codebase is organized into monorepo using the uv tool for package management which allows us to perform reproducible experimentations, modular and scalable development. The repository follows the typical uv setup of workspace layout where each major pipeline component lives in its own Python package under \texttt{packages/} directory. Further repository is shown in figure~\ref{fig:code_structure}.
+
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/images/001_github.png}
+  \caption{Directory layout of the GitHub repository, organised as a \texttt{uv} monorepo.}
+  \label{fig:code_structure}
+\end{figure}
+
+\subsection{Logging and Exception Handling}
+\label{sec:logging-exceptions}
+
+The project uses Python’s standard \texttt{logging} library with a small wrapper in the shared library. At application entry, \texttt{setup\_logging()} configures a rotating file handler (writing to \texttt{\{LOG\_DIR\}/lichess.log}) and a stderr console handler, with the log level controlled by the \texttt{LOG\_LEVEL} environment variable (default \texttt{INFO}). Modules obtain a logger via \texttt{get\_logger(\_\_name\_\_)}. For error handling, a custom \texttt{LichessException} wraps caught exceptions: it logs an ERROR with traceback, preserves the original exception via chaining, and produces a human-readable message containing the file name, line number, and original error. This design ensures consistent observability and debuggability across all pipeline components.
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/images/002_example_libs.png}
+  \caption{Example structure of the shared libraries within the repository.}
+  \label{fig:example_libs}
+\end{figure}
+
+
+% /home/nabin2004/Desktop/projects/lichess/report/figures/images/002_example_libs.png
+
 \input{report2/content/02-shared}
+
+
+\section{Single-Command Pipeline Execution}
+\label{sec:single_command}
+Following command can be used to execute the entire pipeline from data ingestion to model deployment in a single command. Optionally, environment variables for Slack webhook keys can be configured to enable notifications from the pipeline directly into Slack Channel though this step in optional.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/images/004_slack_key.png}
+  \caption{Environment variables for Slack notifications (Optional Step).}
+  \label{fig:slack_key}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/images/005_one_command_to_run.png}
+  \caption{Single-command pipeline execution for quick start.}
+  \label{fig:one_command}
+\end{figure}
+
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/images/006_slack_message_of_pipeline_start.png}
+  \caption{Slack message indicating the start of the pipeline execution.}
+  \label{fig:slack_message}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio]{figures/images/007_dags_overview_in_airflow.png}
+  \caption{DAGs overview in Airflow.}
+  \label{fig:dags_overview}
+\end{figure}
+
+
+
+
+
+
+
+
+
+
 \input{report2/content/03-ingestion}
 \input{report2/content/04-preprocessing}
 \input{report2/content/05-model-dev}
