@@ -20,17 +20,91 @@ data, and census-derived housing attributes---and selects one for downstream pip
 Headers plus ordered moves form the logical model; physically the corpus is compressed text shards, not ready-made tables.
 Supervised targets include game outcome (\texttt{[Result]}) and rating-based signals from pre-game headers (\cref{fig:lichess-pgn-sample}).
 
+\begin{table}[h]
+\centering
+\caption{Lichess Chess Games (2013–present)}
+\begin{tabular}{|p{0.25\textwidth}|p{0.65\textwidth}|}
+\hline
+\textbf{Field} & \textbf{Description} \\
+\hline
+Source & \url{https://database.lichess.org/} \\
+\hline
+Format & .pgn.zst (compressed Portable Game Notation using Zstandard) \\
+\hline
+Size & Jan 2013: 17.8 MB compressed. \\
+      & Total: 2.49 TB, 7,863,012,346 games. \\
+\hline
+Features & Event, Site, Date, Round, White, Black, Result, UTCDate, UTCTime, \\
+          & WhiteElo, BlackElo, WhiteRatingDiff, BlackRatingDiff, WhiteTitle, \\
+          & ECO, Opening, TimeControl, Termination, \%eval, \%clk, \ldots \\
+\hline
+Target Variable & Game Outcome (win/loss/draw) \\
+\hline
+Time Period & January 2013 to present (monthly releases) \\
+\hline
+\end{tabular}
+\end{table}
+
 \section[Dataset two]{Candidate dataset \textnumero\,2}
 \label{sec:dataset-two}
 
 \textbf{Wine Quality}~\cite{Cortez2009wine,UCIWineQuality} is a static CSV of physicochemical assays with ordinal quality scores collected from Portuguese wine samples.
 Flat relational structure and simple ingestion suit tabular baselines, but the corpus is small, stale, and lacks the temporal refresh needed for operational MLOps practice (\cref{fig:uci-wine-schema}).
 
+\begin{table}[h]
+\centering
+\caption{Wine Quality (UCI)}
+\begin{tabular}{|p{0.25\textwidth}|p{0.65\textwidth}|}
+\hline
+\textbf{Field} & \textbf{Description} \\
+\hline
+Source & \url{https://archive.ics.uci.edu/dataset/186/wine+quality} \\
+\hline
+Format & CSV \\
+\hline
+Size & 89 KB \\
+\hline
+Features & fixed\_acidity, volatile\_acidity, citric\_acid, residual\_sugar, \\
+          & chlorides, free\_sulfur\_dioxide, total\_sulfur\_dioxide, density, \\
+          & pH, sulphates, alcohol \\
+\hline
+Target Variable & quality (score) \\
+\hline
+Time Period & 2009 \\
+\hline
+\end{tabular}
+\end{table}
+
+
+
 \section[Dataset three]{Candidate dataset \textnumero\,3}
 \label{sec:dataset-three}
 
 \textbf{Boston housing}~\cite{HarrisonRubinfeld1978,UCIBostonHousing} comprises census and environmental attributes for Boston-area tracts with median home value (\texttt{MEDV}) as a continuous regression target.
 The fixed flat-file schema suits classic tabular baselines rather than transactional chess telemetry and offers limited scale for ingestion, validation, and feature-store design (\cref{fig:boston-housing-sample}).
+
+\begin{table}[h]
+\centering
+\caption{Boston Housing}
+\begin{tabular}{|p{0.25\textwidth}|p{0.65\textwidth}|}
+\hline
+\textbf{Field} & \textbf{Description} \\
+\hline
+Source & \url{https://lib.stat.cmu.edu/datasets/boston} \\
+\hline
+Format & Fixed‑width formatted text file \\
+\hline
+Size & 506 rows × 14 columns, ~27 KB (compressed ~7 KB) \\
+\hline
+Features & CRIM, ZN, INDUS, CHAS, NOX, RM, AGE, DIS, RAD, TAX, \\
+          & PTRATIO, B, LSTAT \\
+\hline
+Target Variable & MEDV (median value of owner‑occupied homes in \$1000’s) \\
+\hline
+Time Period & 1970s \\
+\hline
+\end{tabular}
+\end{table}
 
 \section{Chosen dataset and justification}
 \label{sec:chosen-dataset}

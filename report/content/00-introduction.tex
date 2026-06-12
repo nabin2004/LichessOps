@@ -1,8 +1,58 @@
-% \chapter{Introduction, Background, and Machine Learning Problem}
-% \label{ch:introduction}
+\chapter{Introduction}
+\label{ch:introduction}
 
-% This formative report documents the CMP6230 data management and analytics work for the Lichess Open Database: planning and design (Task~1), followed by implementation of an MLOps pipeline (Task~2). The module learning outcome is to model and communicate data management requirements for analytical operations---storage, retrieval, validation, and downstream machine learning---with justified structure and tooling at each stage.
+Chess has been a solid testbed for evaluating and performing machine learning tasks. In this report, we implement Chess Game Outcome prediction. This machine learning task is economically valuable for platforms like Lichess.org or Chess.com for making subscriptions valuable for users and also providing meaningful insights for improving their games. All data are taken from Lichess's monthly database dump available at database.lichess.org, which publishes the dataset with flexible licensing. This machine learning modeling helps users identify weaknesses and strengths against their opponents, saving time and providing valuable insights. Without this kind of modeling, it would require extensive playing experience to determine whether a particular opening strategy is helpful.
 
-% Chess platforms generate large volumes of rated game telemetry. The supervised learning problem addressed here is to predict game outcomes (or related rating-based signals) from pre-game headers, openings, and player metadata embedded in Portable Game Notation (PGN) archives. That task is non-trivial at Lichess scale: monthly shards are multi-gigabyte compressed blobs, semi-structured rather than relational, and refreshed on a public schedule. A credible pipeline must therefore support both ad hoc SQL and notebook analytics and an automated training path without corrupting temporal structure.
+\section{Machine Learning Objective}
+\label{sec:objective}
 
-% Chapter~\ref{ch:candidate-datasets} compares three candidate datasets and justifies Lichess as the corpus for this project. Chapter~\ref{ch:storage-planning} details the initial data storage plan. Chapter~\ref{ch:initial-pipeline-planning} presents the \emph{initial} end-to-end MLOps design from Task~1. Chapter~\ref{ch:final-pipeline-planning} refines that design into the \emph{final} pipeline plan informed by implementation. Subsequent chapters describe the runnable system, reflective discussion, and plans for the summative submission.
+This project formulates the prediction of chess game outcomes as a multi-class classification problem, where the target variable represents the final result of a game with three possible classes: win (1), loss (0), and draw (\(1/2\)). Our machine learning model leverages historical game data along with player- and opening-related features to learn patterns that influence match outcomes.
+
+\subsection*{Feature Vector}
+The input feature vector is defined as:
+\[
+\mathbf{x} =
+\begin{bmatrix}
+E_{\text{p}} \\
+E_{\text{o}} \\
+C \\
+\text{ECO} \\
+F_{\text{eco}} \\
+T \\
+S_{\text{eco}} \\
+H_{\text{wr}} \\
+O_{\text{wr}}
+\end{bmatrix}
+\]
+
+\subsection*{Target Variable}
+The outcome \(y\) belongs to the set of possible results:
+\[
+y \in \left\{0,\ \tfrac{1}{2},\ 1\right\}
+\]
+where
+\[
+\begin{aligned}
+y &= 1      &&\text{(Win)}   \\
+y &= 0      &&\text{(Loss)}  \\
+y &= \tfrac{1}{2} &&\text{(Draw)}
+\end{aligned}
+\]
+
+\subsection*{Feature Descriptions}
+The features are defined as follows:
+\[
+\begin{aligned}
+E_{\text{p}}   &= \text{Player Elo rating} \\
+E_{\text{o}}   &= \text{Opponent Elo rating} \\
+C              &= \text{Player color (white/black encoded)} \\
+\text{ECO}     &= \text{ECO opening code (encoded)} \\
+F_{\text{eco}} &= \text{Opening family} \\
+T              &= \text{Time control (blitz/rapid/classical)} \\
+S_{\text{eco}} &= \text{Player ECO performance score} \\
+H_{\text{wr}}  &= \text{Head-to-head win rate} \\
+O_{\text{wr}}  &= \text{Opening population win rate}
+\end{aligned}
+\]
+
+By learning from these features, the model aims to capture how different contextual and strategic factors influence game results. Beyond prediction, the learned patterns can be used to analyze player performance across different openings and time controls, providing insights into strengths and weaknesses in specific game situations. While our machine learning model is not designed as a full chess coaching engine, it is intended to serve as a foundational component for analytical tools that can support player improvement and strategic understanding through data-driven evaluation.
