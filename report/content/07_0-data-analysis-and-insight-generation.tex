@@ -6,7 +6,7 @@ After ingestion of PGN data into the star schema, I identified the following mea
 \section{Research Questions}
 
 \noindent
-\textbf{RQ1:} How does a player’s rating difference (WhiteElo – BlackElo) affect the game outcome?
+\textbf{RQ1:} How does a player's rating difference (WhiteElo -- BlackElo) affect the game outcome?
 
 \vspace{0.2\baselineskip}
 \noindent
@@ -17,13 +17,13 @@ After ingestion of PGN data into the star schema, I identified the following mea
 \textbf{RQ3:} Does time control (bullet vs blitz vs rapid) influence the likelihood of a time forfeit termination?
 
 \section{MariaDB Columnar Connector}
-As shown in Figure \ref{fig:mariadb_connector}, we use the mysql connnector which is compatible with the columnar storage engine in MariaDB. This allows us to efficiently query and analyze large volumes of chess game data stored in the fact_games table, as well as join with dimension tables for richer insights.
+As shown in Figure \ref{fig:mariadb-connector}, we use the mysql connnector which is compatible with the columnar storage engine in MariaDB. This allows us to efficiently query and analyze large volumes of chess game data stored in the \texttt{fact\_games} table, as well as join with dimension tables for richer insights.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,keepaspectratio]{figures/data_analysis/006_mariadb_columnar_connector.png}
   \caption{Columnar data connector architecture for MariaDB integration.}
-  \label{fig:mariadb_connector}
+  \label{fig:mariadb-connector}
 \end{figure}
 
 
@@ -95,15 +95,15 @@ rating difference (White Elo minus Black Elo) and the observed probability of a
 White win. The rating difference axis is discretised into bins, with negative 
 values indicating a Black advantage and positive values a White advantage. The 
 resulting curve follows a clear logistic shape: when White is significantly 
-weaker (rating difference below −600), the win probability falls below 0.2; 
+weaker (rating difference below -600), the win probability falls below 0.2; 
 conversely, when White is stronger by more than +600 points, the win probability 
 rises above 0.8. The curve passes through approximately 0.5 when the rating 
 difference is near zero, as expected for equally matched players. This pattern 
-validates the fundamental assumption of the Elo rating system—that the expected 
+validates the fundamental assumption of the Elo rating system---that the expected 
 score (win probability) is a logistic function of the rating gap. For my 
-predictive model, this strong monotonic relationship confirms that `rating_diff` 
+predictive model, this strong monotonic relationship confirms that \texttt{rating\_diff} 
 will be one of the most influential features, and it also provides a baseline 
-against which to compare the model’s learned decision boundary.
+against which to compare the model's learned decision boundary.
 
 \begin{figure}[htbp]
   \centering
@@ -114,7 +114,7 @@ against which to compare the model’s learned decision boundary.
 
 
 Figure~\ref{fig:termination_by_time} examines how game termination type varies 
-with time control. In bullet games (≤3 minutes), time forfeits account for 
+with time control. In bullet games ($\le$ 3 minutes), time forfeits account for 
 approximately 40\% of all terminations, while normal terminations (checkmate or 
 resignation) constitute the remaining 60\%. This reflects the extreme time 
 pressure in bullet chess, where players frequently run out of time before a 
@@ -122,11 +122,11 @@ decisive result occurs on the board. In contrast, for rapid and longer time
 controls (>10 minutes), the proportion of time forfeits drops dramatically to 
 below 10\%, with normal terminations dominating the outcome. This pattern is 
 intuitive: more thinking time reduces the likelihood of flagging. From an 
-MLOps perspective, this relationship suggests that `time_control` is a valuable 
+MLOps perspective, this relationship suggests that \texttt{time\_control} is a valuable 
 predictor of termination type, and models that ignore this feature would 
 generalise poorly across different game formats. The pipeline could also use 
-this insight to trigger different post‑processing logic (e.g., predicting 
-time‑forfeit probability separately for bullet games).
+this insight to trigger different post-processing logic (e.g., predicting 
+time-forfeit probability separately for bullet games).
 
 \begin{figure}[htbp]
   \centering
@@ -139,23 +139,23 @@ time‑forfeit probability separately for bullet games).
 \section{Dimension Tables Overview}
 
 Figure~\ref{fig:describe_other_tables} presents the schema of the three dimension tables 
-that complement the central `fact_games` table in my star schema. 
+that complement the central \texttt{fact\_games} table in my star schema. 
 
-The `dim_player` table stores information about each unique chess player 
-identified by a `player_id`. The `username` column holds the player's Lichess 
-handle, while `title` (e.g., FM, IM, GM) records any official title. 
-`last_known_elo` is a slowly changing attribute that captures the player's most 
+The \texttt{dim\_player} table stores information about each unique chess player 
+identified by a \texttt{player\_id}. The \texttt{username} column holds the player's Lichess 
+handle, while \texttt{title} (e.g., FM, IM, GM) records any official title. 
+\texttt{last\_known\_elo} is a slowly changing attribute that captures the player's most 
 recent rating; this approach avoids updating every historical game record when a 
 rating changes.
 
-The `dim_opening` table maps each `opening_id` to its `eco` code (e.g., B30, C50) 
-and a human‑readable `opening_name`. This separation allows the fact table to 
+The \texttt{dim\_opening} table maps each \texttt{opening\_id} to its \texttt{eco} code (e.g., B30, C50) 
+and a human-readable \texttt{opening\_name}. This separation allows the fact table to 
 reference only the compact opening identifier, saving space and enabling 
 consistency across millions of games.
 
-Finally, `dim_date` provides a time dimension with `date_id` (a surrogate key), 
-`calendar_date`, `year`, `month`, and `day_of_week`. This design supports time‑based 
-analyses such as monthly win‑rate trends or day‑of‑week performance comparisons 
+Finally, \texttt{dim\_date} provides a time dimension with \texttt{date\_id} (a surrogate key), 
+\texttt{calendar\_date}, \texttt{year}, \texttt{month}, and \texttt{day\_of\_week}. This design supports time-based 
+analyses such as monthly win-rate trends or day-of-week performance comparisons 
 without repeatedly storing full date strings in the fact table.
 
 Together, these dimension tables enforce referential integrity and greatly 
@@ -172,20 +172,20 @@ on compact integer or short string keys.
 
 \section{Missing Values Analysis}
 Figure~\ref{fig:missing_values} presents the results of a missing value audit 
-across key tables. In the `fact_games` table, only 218 out of 121,332 rows 
+across key tables. In the \texttt{fact\_games} table, only 218 out of 121,332 rows 
 (approximately 0.18\%) have a missing white or black Elo rating. This extremely 
 low proportion indicates that rating data is almost always present for rated 
-games, which is expected given Lichess’s data collection practices. These missing 
+games, which is expected given Lichess's data collection practices. These missing 
 rows are likely due to unrated games or very old PGN files where ratings were not 
 recorded. Because the percentage is negligible, I chose to drop these rows 
 during model training rather than impute them, as their removal does not 
 meaningfully affect statistical power.
 
 In contrast, the batch predictions table shows that all 4,400 rows have a 
-`NULL` value in the player's elo column. This is not a data error but rather a 
-design choice in my inference pipeline. The model does not require player‑specific 
+\texttt{NULL} value in the player's elo column. This is not a data error but rather a 
+design choice in my inference pipeline. The model does not require player-specific 
 ratings as input features when generating predictions from the batch evaluation 
-script. The `player_elo` column was retained in the schema for potential future 
+script. The \texttt{player\_elo} column was retained in the schema for potential future 
 use (e.g., personalised predictions) but was left intentionally empty for the 
 current batch run. Therefore, no remediation is needed. For production 
 deployment, I would either populate this column with the relevant player 
@@ -208,54 +208,73 @@ ratings or remove the column entirely to avoid confusion.
 
 \section{Model Drift}
 
+Deploying machine learning models into production environments exposes them to dynamic real-world conditions where the underlying data generating processes are rarely stationary~\cite{gama2014}. This non-stationarity leads to a progressive decline in predictive accuracy over time, a phenomenon commonly termed \textit{model drift}, \textit{model decay}, or \textit{predictive model decay}~\cite{ibm_drift}. According to research from the Massachusetts Institute of Technology, approximately seventy percent of deployed machine learning models experience significant performance degradation within their first year of operation, with systemic shifts in data quality and environment semantics acting as primary drivers rather than algorithmic failure~\cite{countly}. Within an enterprise-grade MLOps pipeline designed to process massive game dumps from platforms such as \texttt{lichess.database.org}, detecting and interpreting these shifts is critical to maintaining the validity of ratings, player behaviour classifications, and automated cheat-detection systems~\cite{lichess2025}.
 
-% You need to write a short research‑based discussion. No code required, but you must reference sources.
+% To mathematically characterise the operational environment, the data-generating process at any given temporal point \(t\) is defined as a joint probability distribution \(P_{t}(X, Y)\) over the input covariate space \(X\) and the target output space \(Y\)~\cite{gama2014}. The joint probability distribution is decomposed into a marginal distribution of the features \(P(X)\) and a conditional distribution of the target given the features \(P(Y|X)\), expressed as \(P(X,Y) = P(X) \cdot P(Y|X)\)~\cite{gama2014}. Model drift occurs when the joint distribution at a specific production time step \(t+1\) deviates from the baseline training distribution at time \(t\), such that \(P_{t+1}(X,Y) \neq P_{t}(X,Y)\)~\cite{webb2018}. This overall distribution shift is segmented into three distinct statistical phenomena~\cite{gama2014, webb2018}:
 
-% What to write:
+% \begin{itemize}
+%     \item \textbf{Covariate Shift (Virtual Drift)}: This shift occurs when the marginal distribution of the input features changes over time, while the conditional probability mapping features to target labels remains stationary, written as \(P_{t+1}(X) \neq P_{t}(X)\) and \(P_{t+1}(Y|X) = P_{t}(Y|X)\)~\cite{shimodaira2000}. Formulated initially by Shimodaira in 2000, covariate shift assumes that the training data and operational test data are drawn from different distributions, yet the underlying decision rules remain constant~\cite{shimodaira2000}. For example, if a chess platform experiences a massive influx of novice players, the marginal distribution of user ratings \(P(X)\) shifts significantly downward, yet the underlying relationship between rating differences and game outcomes \(P(Y|X)\) remains invariant~\cite{microsoft2022}.
 
-%     Definition: Model drift = decline in prediction performance due to changes in data distribution over time.
+%     \item \textbf{Real Concept Drift (Posterior Shift)}: This shift occurs when the relationship between the input features and the target variable changes over time, regardless of any changes in the marginal distribution of the covariates, written as \(P_{t+1}(Y|X) \neq P_{t}(Y|X)\) and \(P_{t+1}(X) = P_{t}(X)\)~\cite{webb2018}. This represents a physical alteration of the optimal decision boundary~\cite{webb2018}. In a chess analytics context, if a server-side engine update or major patch modifies the automated positional assessment of board states, a specific feature vector \(x\) representing a pawn structure may now map to a different victory probability \(P(Y|x)\), shifting \(P(Y|X)\) without altering the frequency of the board states themselves~\cite{ibm_drift}.
 
-%     Data drift: Input feature distribution changes (e.g., in 2025, Lichess gets many more 800‑rated players than in 2017).
+%     \item \textbf{Prior Probability Shift (Label Drift)}: This shift manifests when the marginal distribution of the target variable changes over time while the class-conditional distributions remain constant, written as \(P_{t+1}(Y) \neq P_{t}(Y)\) and \(P_{t+1}(X|Y) = P_{t}(X|Y)\)~\cite{webb2018}. This occurs when the overall proportion of class outcomes changes~\cite{webb2018}. For instance, a sudden surge in player reports or flaggings during a seasonal competitive event skew the baseline expectation of the proportion of anomalous accounts, requiring models to adjust classification thresholds to prevent false positives~\cite{lichess2025}.
+% \end{itemize}
 
-%     Concept drift: Relationship changes (e.g., after an engine update, the evaluation %eval becomes less predictive of actual human results).
+% \begin{table}[htbp]
+% \centering
+% \caption{Taxonomy of model drift with chess pipeline examples.}
+% \label{tab:drift_taxonomy}
+% \begin{tabular}{|l|l|l|}
+% \hline
+% \textbf{Shift Category} & \textbf{Mathematical Operationalisation} & \textbf{Chess Pipeline Practical Scenario} \\ \hline
+% Covariate Shift & \(P_{t+1}(X) \neq P_{t}(X),\ P(Y|X)\) constant & A sudden surge in bullet games relative to classical games alters the input move-time distribution~\cite{microsoft2022}. \\ \hline
+% Real Concept Drift & \(P_{t+1}(Y|X) \neq P_{t}(Y|X),\ P(X)\) constant & The emergence of a novel opening variation (e.g., Stafford Gambit) alters the win rate of historical lines~\cite{reddit2025}. \\ \hline
+% Prior Probability Shift & \(P_{t+1}(Y) \neq P_{t}(Y),\ P(X|Y)\) constant & A spike in cheating reports during a highly publicised online tournament~\cite{lichess2025}. \\ \hline
+% \end{tabular}
+% \end{table}
 
-%     Impact: Your model trained on 2017 games may mispredict outcomes for 2025 games, leading to poor user recommendations or faulty tournament seeding.
-
-%     Mitigation:
-
-%         Periodic retraining (weekly/monthly).
-
-%         Monitor PSI (Population Stability Index) on features like rating_diff, time_control.
-
-%         Use online learning (e.g., partial_fit in scikit‑learn).
-
-%         Set up an alert when accuracy drops below a threshold.
-
-% Reference (BCU Harvard):
-% Gama, J. et al. (2014) ‘A survey on concept drift adaptation’, ACM Computing Surveys, 46(4), pp. 1–37.
-
-
-\section{Concept Drift}
+% Understanding these shifts is complicated in practice by the presence of mixed data drifts, where covariate shifts and real concept drifts occur simultaneously, demanding holistic metrics that avoid generating excessive false-positive drift alarms on benign covariate variations~\cite{webb2018}.
 
 
-\section{Comparison with initial plans}
+\subsection{Concept Drift}
+Webb's taxonomy categorises concept drift into four temporal profiles~\cite{webb2018}. Sudden drift replaces the old distribution instantaneously, as when a rating system update shifts all historical ratings~\cite{ibm_drift}. Gradual drift involves coexistence of old and new concepts over time, such as players slowly migrating to a new mobile app~\cite{ibm_drift}. Incremental drift is a continuous stepwise evolution, like the gradual inflation of ratings over years~\cite{webb2018}. Recurring drift sees concepts disappear and reappear irregularly, typical of seasonal playing patterns~\cite{webb2018}. A major practical challenge is the delayed labelling problem: ground truth (e.g., cheating verdicts) may arrive hours or weeks after predictions, breaking supervised detectors that assume immediate labels~\cite{webb2018}.
+
+\subsection{Drift Mitigation Strategies for the Pipeline}
+
+For protecting against concept drift, the following strategies can be employed for production deployment:
+\begin{enumerate}
+    \item \textbf{Periodic retraining}: Retrain the model weekly on the most recent month of data to adapt to gradual shifts.
+    \item \textbf{Statistical drift detection}: Use the Population Stability Index (PSI) on \texttt{rating\_diff} and \texttt{time\_control\_seconds} with an alert threshold of PSI \(> 0.2\).
+    \item \textbf{Performance monitoring}: Track accuracy and AUC on a rolling window of predictions with known outcomes (from \texttt{batch\_predictions}). A drop of more than 5\% triggers an alert.
+    \item \textbf{Explainability auditing}: Apply SHAP explanations periodically to check whether feature importances remain stable.
+\end{enumerate}
 
 \begin{table}[htbp]
 \centering
 \caption{Comparison of Initial and Final Plans with Discrepancy Analysis}
-\begin{tabular}{@{} l l l p{5cm} @{}}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}p{2.5cm}
+                                >{\raggedright\arraybackslash}p{3cm}
+                                >{\raggedright\arraybackslash}p{3cm}
+                                X @{}}
 \toprule
-\textbf{Aspect} & \textbf{Initial Plan (Task 1)} & \textbf{Final Plan (Task 2/3)} & \textbf{Discrepancy \& Reason} \\
+\textbf{Aspect} &
+\textbf{Initial Plan (Task 1)} &
+\textbf{Final Plan (Task 2/3)} &
+\textbf{Discrepancy \& Reason} \\
 \midrule
+
 Data Analysis Engine
 & DuckDB for analysis
 & MariaDB columnar connector
 & Performance and scalability needs for large datasets, as well as better integration with existing tools. \\
+
 \midrule
+
 Online Feature Store
 & MinIO object store for feature store online
 & Redis for online feature store
-& Redis's low latency and suitability for real-time feature serving, which is critical for model inference in production. \\
+& Redis's low latency and suitability for real-time feature serving which is critical for model inference in production. \\
+
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
