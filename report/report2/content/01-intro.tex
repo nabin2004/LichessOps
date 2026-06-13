@@ -1,19 +1,21 @@
 \section{Introduction}
 \label{sec:intro}
 
-Coursework Task~1 for CMP6230 was a planning exercise where I compared candidate datasets, chose the Lichess Open Database \parencite{lichess_open_database,cc0_10}, and sketched an MLOps pipeline with diagrams and storage justification. Task~2, documented here, is where that sketch became runnable software. This report is deliberately implementation-focused. I explain what I built, why I made particular storage and orchestration choices, and how each stage connects to code in the \textbf{LichessOps} GitHub repository \githubparencite{lichessops_repo}.
+This is the introduction
 
-Lichess publishes a full monthly dump of rated games as a single compressed archive named in (\texttt{lichess-YYYY-MM.pgn.zst}) template format. The file is large, the schema is chess-specific (PGN headers rather than relational tables), and the licence is permissive to do further downstream Machine learning tasks. That combination is learning opportunity rich for Data Management and Machine learning Operations(MLOPS) practice. 
+% Coursework Task~1 for CMP6230 was a planning exercise where I compared candidate datasets, chose the Lichess Open Database \parencite{lichess_open_database,cc0_10}, and sketched an MLOps pipeline with diagrams and storage justification. Task~2, documented here, is where that sketch became runnable software. This report is deliberately implementation-focused. I explain what I built, why I made particular storage and orchestration choices, and how each stage connects to code in the \textbf{LichessOps} GitHub repository \githubparencite{lichessops_repo}.
 
-My pipeline treats each new month as an incremental batch of data. Two audiences motivated the design from Task~1. First is analysts who want SQL and notebooks over curated tables, and second are automated ML lifecycle paths that retrains when fresh data lands. I adopted an \textbf{ELT} pipeline rather than classic ETL. Due to ELT use, Extraction and load happen first in our pipeline. The raw \texttt{.pgn.zst} data lands in MinIO Object store exactly in the format that lichess uploads on \url{database.lichess.org} and transformation runs later in Spark and DuckDB is the columnar database where our finally computed and columnar parquet formats dataset is stored. 
+% Lichess publishes a full monthly dump of rated games as a single compressed archive named in (\texttt{lichess-YYYY-MM.pgn.zst}) template format. The file is large, the schema is chess-specific (PGN headers rather than relational tables), and the licence is permissive to do further downstream Machine learning tasks. That combination is learning opportunity rich for Data Management and Machine learning Operations(MLOPS) practice. 
 
-% Figure~\ref{fig:arch} shows how configuration, artifacts, and services fit together. The sections that follow walk through shared utilities, then each pipeline stage using the \emph{What / Why / How} structure from the task brief. Reflective discussion at the end compares this build to my earlier plans. A code index in the appendix lists GitHub paths for the main modules cited in the text.
+% My pipeline treats each new month as an incremental batch of data. Two audiences motivated the design from Task~1. First is analysts who want SQL and notebooks over curated tables, and second are automated ML lifecycle paths that retrains when fresh data lands. I adopted an \textbf{ELT} pipeline rather than classic ETL. Due to ELT use, Extraction and load happen first in our pipeline. The raw \texttt{.pgn.zst} data lands in MinIO Object store exactly in the format that lichess uploads on \url{database.lichess.org} and transformation runs later in Spark and DuckDB is the columnar database where our finally computed and columnar parquet formats dataset is stored. 
 
-% I write in the first person where it clarifies engineering decisions; ``we'' refers to the pipeline as a system. Technical names (\texttt{lichess-data}, bucket names, DAG tasks) match the repository so markers can trace claims to evidence. Nothing here replaces the README or Compose docs---this report explains \emph{why} those commands exist in the coursework context.
+% % Figure~\ref{fig:arch} shows how configuration, artifacts, and services fit together. The sections that follow walk through shared utilities, then each pipeline stage using the \emph{What / Why / How} structure from the task brief. Reflective discussion at the end compares this build to my earlier plans. A code index in the appendix lists GitHub paths for the main modules cited in the text.
 
-% \begin{figure}[htbp]
-%   \centering
-%   \includegraphics[width=\linewidth,keepaspectratio]{arch_diag.pdf}
-%   \caption{End-to-end MLOps pipeline: configuration, artifacts, and components.}
-%   \label{fig:arch}
-% \end{figure}
+% % I write in the first person where it clarifies engineering decisions; ``we'' refers to the pipeline as a system. Technical names (\texttt{lichess-data}, bucket names, DAG tasks) match the repository so markers can trace claims to evidence. Nothing here replaces the README or Compose docs---this report explains \emph{why} those commands exist in the coursework context.
+
+% % \begin{figure}[htbp]
+% %   \centering
+% %   \includegraphics[width=\linewidth,keepaspectratio]{arch_diag.pdf}
+% %   \caption{End-to-end MLOps pipeline: configuration, artifacts, and components.}
+% %   \label{fig:arch}
+% % \end{figure}

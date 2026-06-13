@@ -22,6 +22,5 @@ I start the server with \texttt{uv run lichess-serving} from the repo root after
   \label{fig:deployment}
 \end{figure}
 
-A minimal check I repeat after each promote: \texttt{GET /health} returns loaded=true, then \texttt{POST /predict} with a 1800-rated blitz game and the Sicilian Defence headers I used in tests. If probabilities sum to roughly one and the model gauge flips to 1, the deploy is good enough for demo purposes.
 
 % \textbf{Serialisation and network access.} The brief asks how models are stored and retrieved. On disk, \texttt{joblib} captures the fitted \texttt{Pipeline}; in MLflow, the same object is versioned with metrics and parameters. Over the network, JSON requests map to Python dicts, pass through the shared preprocessor, and return probabilities---no batch file hand-off. Docker would add an extra layer (image digest, published port 8080, health check in Compose) without changing that contract; I documented the host-run path because it is what I demo today.
