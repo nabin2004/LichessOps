@@ -4,7 +4,7 @@ This document describes how developers run and extend Great Expectations (GE) ch
 
 ## Overview
 
-GE validation runs after extraction and preprocessing to verify basic data quality. The current implementation is intentionally minimal:
+GE validation runs after extraction and preprocessing to verify data quality:
 
 - Processed Parquet: column presence, non-null checks for key fields, row count > 0.
 - Preprocessed features (full history): column presence, non-null checks for key derived fields, row count > 0.

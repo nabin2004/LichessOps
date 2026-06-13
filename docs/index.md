@@ -8,6 +8,7 @@
 - [Config loading](./config-loading.md) — `load_config`, YAML paths, deep merge behavior, and examples.
 - [Artifact management](./artifact-management.md) — `get_artifact_path`, `get_run_dir`, `ARTIFACT_DIR`, path safety, and layout.
 - [ColumnStore analytics](./columnstore-analytics.md) — MinIO buckets, star-schema Parquet, MariaDB ColumnStore, inference storage, and ELT CLI commands.
+- [Pipeline evaluation and monitoring](./pipeline-evaluation-and-monitoring.md) — model performance metrics, confusion matrices, test set evaluation, model drift analysis, Prometheus/Grafana monitoring strategy, and Airflow retraining policies.
 
 ## Model training and serving
 

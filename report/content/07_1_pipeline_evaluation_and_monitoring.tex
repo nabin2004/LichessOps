@@ -1,10 +1,19 @@
 \chapter{Pipeline Evaluation and Monitoring}
 \label{ch:evaluation-and-monitoring}
-
+This chapter provides a detailed overview of the pipeline evaluation and monitoring framework for the Lichess chess outcome prediction model.
 
 \section{Model Performance Evaluation}
+While developing this pipeline, I found that a multiclass classification model (predicting white win, black win, or draw) requires looking beyond simple accuracy due to problems such as class imbalances and the inherent difficulty of predicting draws. Our evaluation pipeline uses MLflow for experiment tracking and Evidently AI, Prometheus, Grafana for computing, tracking, and visualizing these performance metrics.
 
 \subsection{Classification Metrics}
+Evidently AI calculates following classification metrics as shown in Figure \ref{fig:classification_metrics}, \ref{fig:confusion_matrix_1} and \ref{fig:confusion_matrix_2}  on our validation and test splits, including accuracy, precision, recall, and F1-score for each class (White Win, Black Win, Draw). During the implementation, I observed the following patterns in the metrics:
+
+\begin{itemize}
+    \item \textbf{Accuracy vs. F1-score:} Accuracy alone can be overly optimistic due to class distribution (draws are less common than wins). Monitoring macro-averaged F1-scores provides a more robust measure of performance across all outcomes.
+    \item \textbf{Class Breakdown:} Performance is typically higher on decisive outcomes (wins/losses) compared to draws, reflecting the complexity of predicting peaceful results from pre-game features.
+\end{itemize}
+
+
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,keepaspectratio]{figures/images/023_evidently_ai_more_metric.png}
@@ -13,6 +22,8 @@
 \end{figure}
 
 \subsection{Confusion Matrix Interpretation}
+The confusion matrix helps identify systematic misclassifications by mapping true outcomes against predicted outcomes. The model successfully separates white wins from black wins with high reliability, demonstrating strong predictive capability for decisive outcomes. In contrast, it often misclassifies draws as wins for either side because draw boundaries are highly non-linear and are strongly influenced by micro-tactical developments that cannot be fully captured using pre-game features such as ratings and time controls. Further details are presented in Figures \ref{fig:confusion_matrix_1} and \ref{fig:confusion_matrix_2}, which show the distribution of true vs. predicted classes and highlight areas where the model struggles, particularly in distinguishing draws from wins.
+
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,keepaspectratio]{figures/images/024_evidently_ai_more_metrics.png}
@@ -27,7 +38,11 @@
   \label{fig:confusion_matrix_2}
 \end{figure}
 
+
 \subsection{Performance on Test Set (January 2013 Data)}
+
+Authoritative evaluation metrics are scored on a hold-out test set consisting of January 2013 Lichess standard games. As shown in  Figure \ref{fig:test_set_performance}, scoring the model on unseen data ensures that it generalizes well to new examples and helps guard against overfitting during hyperparameter tuning. The resulting test metrics, which are automatically saved to the MLflow run directory and model registry, serve as the baseline performance benchmarks for evaluating future model improvements.
+
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,keepaspectratio]{figures/images/025_evidently_ai_more_metrics.png}
@@ -36,9 +51,7 @@
 \end{figure}
 
 \section{Model Drift Analysis}
-
-\subsection{Definition of Data Drift and Concept Drift}
-% No image for this subsection – add text definitions here.
+Machine learning models deployed in production are susceptible to degradation over time due to shifts in data distributions.
 
 \subsection{How drift could impact a chess outcome predictor}
 % No image – add textual explanation.
@@ -52,9 +65,30 @@
 \end{figure}
 
 \section{Monitoring Strategy}
+Our production observability strategy covers three main pillars: serving performance, data quality, and concept/data drift.
 
-\subsection{What is being monitored (predictions, features, performance)}
-% No image – add text.
+\subsection{What is being monitored:}
+Following indicators are being monitored in production:
+
+\begin{enumerate}
+    \item \textbf{Predictions:}
+    \begin{itemize}
+        \item The ratio of predicted classes (White Win, Black Win, Draw) is monitored continuously.
+        \item Sudden shifts in the distribution of predicted probabilities are tracked.
+    \end{itemize}
+    
+    \item \textbf{Features:}
+    \begin{itemize}
+        \item Distributions of numerical features (player/opponent Elo, Elo difference) and categorical features (ECO opening codes, game types).
+        \item Missing data rates (null values) are tracked to ensure upstream ingestion/scraping processes remain healthy.
+    \end{itemize}
+    
+    \item \textbf{Performance \& Infrastructure:}
+    \begin{itemize}
+        \item Live classification metrics (accuracy, precision, recall) are calculated on a daily lag by matching prediction logs in MariaDB ColumnStore against true game outcomes.
+        \item API operational health is tracked via request throughput (QPS), HTTP latency, memory usage, CPU load, and network I/O.
+    \end{itemize}
+\end{enumerate}
 
 \subsection{Monitoring tools and implementation (logging, alerts)}
 \begin{figure}[htbp]
@@ -92,7 +126,10 @@
   \label{fig:grafana_dashboard}
 \end{figure}
 
-\subsection{Retraining policy (periodic or drift-triggered)}
+\subsection{Retraining policy}
+We manage pipeline orchestration, drift analysis, and model retraining using \textbf{Apache Airflow}. Since, the data size is exponentially increasing on lichess platform we have set up a notification alert system  to slack channel which informs the team with reasong for retraining. Our monitoring pipeline runs daily. Retrain automatically happens at first day of each month reason being lichess publishing the data on lichess portal each month. 
+
+
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,keepaspectratio]{figures/images/007_dags_overview_in_airflow.png}
