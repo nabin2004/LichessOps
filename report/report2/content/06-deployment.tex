@@ -1,19 +1,18 @@
 \section{Model deployment}
 \label{sec:deployment}
+In our pipeline, deployment here means exposing a trained model over HTTP server so another service or human can request predictions. The FastAPI application \parencite{fastapi} in \codecite{code_serving_app} serves \texttt{/health} and \texttt{/predict} endpoints. At startup it resolves a model URI \texttt{models:/lichess-outcome-predictor/Staging} from the MLflow registry.
 
-\subsection{What}
+Server can be started with either \texttt{uv run lichess-serving} or docker compose run from the repo root after exporting \texttt{MODEL\_URI} and MLflow tracking variables. The CLI in \repo{packages/lichess_serving/src/lichess_serving/cli.py} contains FastAPI code which is containerised using dockerfile and docker compose. 
 
-Deployment here means exposing a trained model over HTTP so another service (or a human with curl) can request predictions without rerunning training. The FastAPI application \parencite{fastapi} in \codecite{code_serving_app} serves \texttt{/health} and \texttt{/predict}. At startup it resolves a model URI \texttt{models:/lichess-outcome-predictor/Staging} from the MLflow registry.
 
-\subsection{Why}
+% \subsection{Why}
 
-Serialising with \texttt{joblib} is simple. Registering the same object in MLflow ties the running API to an experiment lineage. When April's retrain beats March, It promotes a new version to staging.
+% Serialising with \texttt{joblib} is simple. Registering the same object in MLflow ties the running API to an experiment lineage. When April's retrain beats March, It promotes a new version to staging.
 
-\subsection{How}
+% \subsection{How}
 
 % \texttt{\_load\_model} runs in the FastAPI lifespan hook. It branches on whether \texttt{MODEL\_URI} ends with \texttt{.joblib} or points at MLflow; the latter downloads the sklearn flavour through the tracking API. Request bodies follow \codecite{code_serving_schemas}: rating, title, time control, opening fields in \texttt{PredictRequest}, with class probabilities and a human-readable outcome label in \texttt{PredictResponse}. \codecite{code_features} supplies \texttt{build\_inference\_row} so training and serving share encoding logic---I fixed a nasty mismatch here once when one-hot columns diverged.
 
-I start the server with \texttt{uv run lichess-serving} from the repo root after exporting \texttt{MODEL\_URI} and MLflow tracking variables. The CLI in \repo{packages/lichess_serving/src/lichess_serving/cli.py} wraps Uvicorn. Containerising is straightforward (slim Python image, same env vars) but left out of this submission to save integration time.
 
 \begin{figure}[htbp]
   \centering

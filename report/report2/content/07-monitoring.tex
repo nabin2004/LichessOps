@@ -1,19 +1,6 @@
 \section{Model monitoring}
 \label{sec:monitoring}
-
-\subsection{What}
-
-Monitoring, in my setup, spans three layers: infrastructure metrics from the API, data-quality re-checks when a new month lands, and optional drift visualisation between reference and current feature files. Prometheus \parencite{prometheus} scrapes the serving app; Grafana dashboards ship in the repo; Evidently \parencite{evidently} can render drift reports; Great Expectations reruns on fresh Parquet through \codecite{code_ge_runner}.
-
-\subsection{Why}
-
-Accuracy on last month's hold-out does not guarantee next month behaves. New openings surge after influencer games; rating inflation drifts feature means. Without \texttt{/metrics} I would not notice serving failures until a user complained. Without GE on the new shard I might train on a column that turned entirely null. Drift tooling is manual today, but it answers marker questions about ``checking performance once deployed.''
-
-\subsection{How}
-
-\texttt{prometheus\_fastapi\_instrumentator} adds standard HTTP histograms. I implemented this \texttt{lichess\_model\_loaded} and \texttt{lichess\_predictions\_total} (counter) in \codecite{code_serving_app} because they show up clearly on the dashboard JSON under \repo{services/prometheus/grafana/provisioning/dashboards/json/serving.json}. Compose profile \texttt{monitoring} starts Prometheus on 9090 and Grafana on 3000; the scrape config \codecite{code_prometheus} targets \texttt{host.docker.internal:8082} so a host-run server remains visible to containers.
-
-After each monthly DAG run I would look at: (1) GE pass/fail in the artefact folder; (2) whether prediction rate spikes correlate with errors in \texttt{logs/lichess.log} via \codecite{code_logger}; (3) optionally POST reference and current Parquet paths to the Evidently API \githubparencite{code_evidently} (\texttt{evidently} profile, port 5001) and open the HTML report in Streamlit on 8501. None of that is fully automated into Airflow yet.
+Accuracy on last month's hold-out does not guarantee next month's performance of model. New openings surge after influencer games; rating inflation drifts feature means. Without metrics, It wouldbe hard to notice serving failures unless a user complains. Monitoring, in my setup, spans three layers which are infrastructure metrics from the API, data-quality re-checks when a new month lands, and drift visualisation. Prometheus \parencite{prometheus} scrapes the serving FastAPI server. Grafana dashboards visualizes using the prometheus. Evidently \parencite{evidently} renders drift reports and other model monitoring reports and this monitoring step runs every day on scheduled time by Airflow's orchestration. Monitoring stage also uses the the slack notification alerts which alerts the team when the problem like data drift or failure happens. 
 
 \begin{figure}[htbp]
   \centering
@@ -22,4 +9,3 @@ After each monthly DAG run I would look at: (1) GE pass/fail in the artefact fol
   \label{fig:monitoring}
 \end{figure}
 
-Alerts in a production system would route GE failures and Airflow task errors to email or Slack; here, a failed task email from Airflow's built-in notifier is enough to document intent. The monitoring stage completes the loop back to ingestion: a new month triggers download, validation, and the same observability hooks repeat.

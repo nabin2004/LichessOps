@@ -2,7 +2,7 @@
 \label{ch:final-pipeline-implementation}
 
 
-The following sections document the refined pipeline plan as implemented in the LichessOps repository \githubparencite{lichessops_repo}. Each stage follows the What, Why, and How structure from the module brief, aligned with the Task~1 diagrams but updated where implementation constraints changed the approach.
+The following sections document the implemented pipeline plan which is available in the LichessOps repository \githubparencite{lichessops_repo}.
 
 
 \section{Code Structure and Repository}
@@ -15,7 +15,7 @@ The following sections document the refined pipeline plan as implemented in the 
 \end{figure}
 
 \label{sec:code_structure}
-Our codebase is organized into monorepo using the uv tool for package management which allows us to perform reproducible experimentations, modular and scalable development. The repository follows the typical uv setup of workspace layout where each major pipeline component lives in its own Python package under \texttt{packages/} directory. Further repository is shown in figure~\ref{fig:code_structure}.
+Codebase is organized into monorepo using the uv tool for package management. The repository follows the typical uv setup of workspace layout where each major pipeline component lives in its own Python package under \texttt{packages/} directory. Further repository tree is shown in figure~\ref{fig:code_structure}.
 
 
 
@@ -29,7 +29,7 @@ Our codebase is organized into monorepo using the uv tool for package management
 \subsection{Logging and Exception Handling}
 \label{sec:logging-exceptions}
 
-The project uses Python’s standard \texttt{logging} library with a small wrapper in the shared library. At application entry, \texttt{setup\_logging()} configures a rotating file handler (writing to \texttt{\{LOG\_DIR\}/lichess.log}) and a stderr console handler, with the log level controlled by the \texttt{LOG\_LEVEL} environment variable (default \texttt{INFO}). Modules obtain a logger via \texttt{get\_logger(\_\_name\_\_)}. For error handling, a custom \texttt{LichessException} wraps caught exceptions: it logs an ERROR with traceback, preserves the original exception via chaining, and produces a human-readable message containing the file name, line number, and original error. This design ensures consistent observability and debuggability across all pipeline components.
+The project uses Python’s standard logging library with a small wrapper in the shared library. This wrapper provides a consistent logging interface across all pipeline components and allows for easy configuration of log levels and formats. Logs are structured to include timestamps, log levels, and contextual information about the pipeline stage and any relevant identifiers (e.g., game ID, player IDs). Implementation example code is shown in figure~\ref{fig:logging_example}.
 
 
 \begin{figure}[htbp]
@@ -47,7 +47,7 @@ The project uses Python’s standard \texttt{logging} library with a small wrapp
 
 \section{Single-Command Pipeline Execution}
 \label{sec:single_command}
-Following command can be used to execute the entire pipeline from data ingestion to model deployment in a single command. Optionally, environment variables for Slack webhook keys can be configured to enable notifications from the pipeline directly into Slack Channel though this step in optional.
+Following command \ref{fig:one_command} can be executed to run the entire pipeline from data ingestion to model deployment in a single command. Optionally, environment variables for Slack webhook keys can be configured to enable notifications from the pipeline directly into Slack Channel.
 
 \begin{figure}[htbp]
   \centering

@@ -1,32 +1,27 @@
 \section{Data ingestion}
 \label{sec:ingestion}
-
-\subsection{What}
-
 Data ingestion, in this project mainly involves pulling the monthly Lichess database dump from the public facing website \url{https://database.lichess.org} and storing it in durable object storage so every later stage uses the same bytes. The input is the template URL Lichess publishes from \texttt{database.lichess.org} where we download a Zstandard-compressed PGN file \parencite{zstandard} named \texttt{lichess-YYYY-MM.pgn.zst}. It is a compressed .pgn file which is a standard format to represent the chess game. Each game inside this .pgn file is text with headers (player names, ratings, opening, result). The output of ingestion is not yet a dataframe. it is that validated archive sitting in the \texttt{lichess-raw} bucket \parencite{minio} in a format which is ready for Spark for transformation. 
 
 The visible components are a Python downloader CLI, checksum validation, boto3 uploads, MinIO provisioned via Docker Compose \githubparencite{code_minio_compose}, and Apache Airflow \parencite{apache_airflow} as the scheduler here.
 
-\subsection{Why}
+\subsection{Tools used}
 
-I chose MinIO because PGN and \texttt{.zst} blobs do not map cleanly onto a columnar warehouse table. Object storage treats them as opaque files with cheap immutability and no semantics. I can reprocess April 2024 months later without re-downloading if the raw key still exists. Here, Checksum validation matters due to size of raw file. If the checksum fails then early detection prevents issues. Catching these issues early helps to save time and resources early in the pipeline. 
+I chose MinIO because PGN and \texttt{.zst} blobs do not map cleanly onto a columnar warehouse table. Object storage treats them as opaque files with cheap immutability and no semantics. This enables the reprocessing of any month's data later without re-downloading it. Here, I also do the checksum validation for assesing the reliability and authenticity of data. Catching these issues early helps to save time and resources early in the pipeline. Airflow orchestration runs the DAG on each month on first day, so developer does not need to manually click download when Lichess typically publishes. ELT fits my development setup. Here transformation stays on Spark and DuckDB.
 
-Airflow runs the DAG on \texttt{0 3 1 * *} (03:00 on the first day of each month) so developer does not need to manually click download when Lichess typically publishes. ELT fits my development setup. Here transformation stays on Spark and DuckDB.
+% \subsection{How}
 
-\subsection{How}
+% The \texttt{lichess\_monthly\_ingestion} DAG \githubparencite{code_airflow_dag} shells out to \texttt{lichess-data}. That Keeps tasks testable from the terminal with the same flags Airflow passes.
 
-The \texttt{lichess\_monthly\_ingestion} DAG \githubparencite{code_airflow_dag} shells out to \texttt{lichess-data}. That Keeps tasks testable from the terminal with the same flags Airflow passes.
+% On the default path (\texttt{use\_elt=True}):
 
-On the default path (\texttt{use\_elt=True}):
+% \begin{enumerate}[nosep]
+%   \item \textbf{download\_shard}: \texttt{lichess-data download} calls \texttt{download\_month} in \codecite{code_downloader}. The client resumes partial files and can verify SHA256 against Lichess's published sums while bytes still stream.
+%   \item \textbf{upload\_raw}: \texttt{upload\_raw\_shard} in \codecite{code_upload} pushes to \texttt{s3://lichess-raw/} using \codecite{code_s3}. When \texttt{LICHESS\_STORAGE\_BACKEND=local}, upload is a no-op for laptop-only runs.
+%   \item \textbf{validate\_shard}: \texttt{validate\_checksum} in \codecite{code_checksum} re-checks integrity. I treat a failure as a hard stop because the DAG should not proceed to Spark on a bad object.
+%   \item Downstream tasks:  (\texttt{spark\_transform}, \texttt{duckdb\_sync}) consume the raw key which they are preprocessing but depend on this stage finishing cleanly.
+% \end{enumerate}
 
-\begin{enumerate}[nosep]
-  \item \textbf{download\_shard}: \texttt{lichess-data download} calls \texttt{download\_month} in \codecite{code_downloader}. The client resumes partial files and can verify SHA256 against Lichess's published sums while bytes still stream.
-  \item \textbf{upload\_raw}: \texttt{upload\_raw\_shard} in \codecite{code_upload} pushes to \texttt{s3://lichess-raw/} using \codecite{code_s3}. When \texttt{LICHESS\_STORAGE\_BACKEND=local}, upload is a no-op for laptop-only runs.
-  \item \textbf{validate\_shard}: \texttt{validate\_checksum} in \codecite{code_checksum} re-checks integrity. I treat a failure as a hard stop because the DAG should not proceed to Spark on a bad object.
-  \item Downstream tasks:  (\texttt{spark\_transform}, \texttt{duckdb\_sync}) consume the raw key which they are preprocessing but depend on this stage finishing cleanly.
-\end{enumerate}
-
-Bringing up storage uses the Compose \texttt{core} profile from the repo root \texttt{docker compose --profile core up -d} which also starts MinIO and a one-shot job that creates \texttt{lichess-raw}, \texttt{lichess-processed}, and \texttt{mlflow-artifacts}. Retrieval for later stages is literally an S3 GET on the month prefix which analysts or Spark both read the same URI via \codecite{code_storage_config}.
+% Bringing up storage uses the Compose \texttt{core} profile from the repo root \texttt{docker compose --profile core up -d} which also starts MinIO and a one-shot job that creates \texttt{lichess-raw}, \texttt{lichess-processed}, and \texttt{mlflow-artifacts}. Retrieval for later stages is literally an S3 GET on the month prefix which analysts or Spark both read the same URI via \codecite{code_storage_config}.
 
 \begin{figure}[htbp]
   \centering

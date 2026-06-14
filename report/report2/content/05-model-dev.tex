@@ -1,19 +1,11 @@
 \section{Model development}
 \label{sec:model-dev}
+Model development trains a supervised multi-class classification classifier to predict game outcome. The business question that I was tackling is, if a player considers a given opening at their rating level, what outcome distribution should they expect? Labels include three possible outcomes of white win, black win or draw. 
 
-\subsection{What}
+\subsection{Tools used}
+Airflow task "\texttt{train\_model}" which calls \texttt{lichess-models train} package. Inside the \codecite{code_train} code, I wrap a scikit-learn \parencite{sklearn} \texttt{Pipeline} which is combination with \codecite{code_features} helps in building a \texttt{ColumnTransformer} for numeric and categorical columns, After which a classifier uses the GridSearchCV and sklearn's train test split function. This package implements the following models which includes logistic regression, random forest, and histogram gradient boosting.
 
-Model development trains a supervised classifier to predict game outcome from pre-game information such as ratings, titles, time control, opening family, and historical form. The business question that I was tackling was practical, if a player considers a given opening at their rating, what outcome distribution should they expect? Labels are three possible outcomes of white win, black win and draw. Deliverables include \texttt{model.joblib} on disk, metrics JSON, and a registered model in MLflow \parencite{mlflow}.
-
-\subsection{Why}
-
-Game-level rows are the natural ingestion grain, but players think in ``my colour, my rating band, my opening''. \codecite{code_dataset} expands each game to player-centric rows via \texttt{to\_player\_perspective} so the model answers that question.
-
-\subsection{How}
-
-Airflow task "\texttt{train\_model}" calls \texttt{lichess-models train}. Inside \codecite{code_train} where I wrap a scikit-learn \parencite{sklearn} \texttt{Pipeline} \codecite{code_features} which helps in building a \texttt{ColumnTransformer} for numeric and categorical columns, After which a classifier slot searched with \texttt{GridSearchCV} and \texttt{train test split}. Candidate estimators include logistic regression, random forest, and histogram gradient boosting; grids live in \texttt{PARAM\_GRIDS}.
-
-The best pipeline serialises to \texttt{artifacts/lichess\_models/\{run\_id\}/model.joblib}. \codecite{code_evaluate} scores the hold-out split and logs accuracy, macro-F1, and confusion-friendly counts to MLflow. \codecite{code_register} publishes under the name \texttt{lichess-outcome-predictor}. The MLflow stack \githubparencite{code_mlflow_compose} uses Postgres for metadata and MinIO (\texttt{mlflow-artifacts} bucket) for large artefacts, start \texttt{core} and \texttt{ml} profiles together or tracking breaks. I also kept notebooks under \texttt{notebook/} for exploratory work. The CLI path is what Airflow relies on. 
+The best pipeline serialises to \texttt{artifacts/lichess\_models/\{run\_id\}/model.joblib}. After which this code snippet\codecite{code_evaluate} scores the hold-out split and logs metrics like accuracy, macro-F1, and confusion-friendly counts to MLflow. This code \codecite{code_register} publishes under the project name of \texttt{lichess-outcome-predictor} in MLflow. The MLflow stack \githubparencite{code_mlflow_compose} uses Postgres for metadata and artifacts storage inside MinIO artifacts bucket. 
 
 \begin{figure}[htbp]
   \centering
@@ -21,8 +13,6 @@ The best pipeline serialises to \texttt{artifacts/lichess\_models/\{run\_id\}/mo
   \caption{Model training: load splits, fit with hyperparameter search, log to MLflow.}
   \label{fig:model-trainer}
 \end{figure}
-
-The multi-class framing matches Lichess results better than treating draws as noise. I have not yet wired the opening weakness report (\repo{packages/lichess_models/src/lichess_models/analyze.py}) into the monthly DAG. It remains a manual analysis script for now.
 
 % \textbf{Metrics and reproducibility.} Hold-out evaluation logs accuracy and macro-F1; I watch both because class imbalance makes accuracy optimistic. MLflow stores the conda-free environment implicitly through pip requirements in the repo; I still note the git commit hash manually in run tags when experimenting. For coursework evidence, the combination of \texttt{model.joblib}, MLflow UI screenshots, and cited training code satisfies ``development of ML models'' better than a single accuracy number in this PDF.
 

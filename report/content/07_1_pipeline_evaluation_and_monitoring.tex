@@ -62,32 +62,28 @@ Machine learning models deployed in production are susceptible to degradation ov
 \end{figure}
 
 \section{Monitoring Strategy}
-Our production observability strategy covers three main pillars: serving performance, data quality, and concept/data drift.
+This pipeline also implements the monitoring and observability which covers three main pillars which are serving performance, data quality, and data drift.
 
-\subsection{What is being monitored:}
 Following indicators are being monitored in production:
 
-\begin{enumerate}
-    \item \textbf{Predictions:}
-    \begin{itemize}
-        \item The ratio of predicted classes (White Win, Black Win, Draw) is monitored continuously.
-        \item Sudden shifts in the distribution of predicted probabilities are tracked.
-    \end{itemize}
-    
-    \item \textbf{Features:}
-    \begin{itemize}
-        \item Distributions of numerical features (player/opponent Elo, Elo difference) and categorical features (ECO opening codes, game types).
-        \item Missing data rates (null values) are tracked to ensure upstream ingestion/scraping processes remain healthy.
-    \end{itemize}
-    
-    \item \textbf{Performance \& Infrastructure:}
-    \begin{itemize}
-        \item Live classification metrics (accuracy, precision, recall) are calculated on a daily lag by matching prediction logs in MariaDB ColumnStore against true game outcomes.
-        \item API operational health is tracked via request throughput (QPS), HTTP latency, memory usage, CPU load, and network I/O.
-    \end{itemize}
-\end{enumerate}
 
-\subsection{Monitoring tools and implementation (logging, alerts)}
+\begin{itemize}
+      \item Ratio of predicted classes for outcome.
+        
+      \item Sudden shifts in the distribution of predicted probabilities.
+
+      \item Distributions of features features.
+
+      \item Missing data rates.
+
+      \item Classification metrics calculated on a daily basis.
+  
+      \item API operational health 
+
+      \item System level resource usage like CPU and Memory usage.
+    \end{itemize}
+
+\subsection{Monitoring tools and implementation}
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth,keepaspectratio]{figures/images/020_prometheus_ui_showing_metrics.png}
@@ -124,7 +120,7 @@ Following indicators are being monitored in production:
 \end{figure}
 
 \subsection{Retraining policy}
-We manage pipeline orchestration, drift analysis, and model retraining using \textbf{Apache Airflow}. Since, the data size is exponentially increasing on lichess platform we have set up a notification alert system  to slack channel which informs the team with reasong for retraining. Our monitoring pipeline runs daily. Retrain automatically happens at first day of each month reason being lichess publishing the data on lichess portal each month. 
+Since, the data size increases exponentially every month, so I have set up a notification alert system which sends the notification to slack channel which helps in informing the team with latest drift and monitoring reports and retraining needed alert. Monitoring pipeline runs daily as scheduled on Airflow. 
 
 
 \begin{figure}[htbp]
@@ -150,8 +146,8 @@ We manage pipeline orchestration, drift analysis, and model retraining using \te
 
 
 
-\section{Ethical, Legal, Security and Privacy Considerations}
-\subsubsection{Key Terms and Definitions}
+\section{Key Terms and Definitions}
+
 
 \begin{itemize}
     \item \textbf{Data Protection Law}: Data Protection Law refers to the rules and regulations related to data protection and regulatory frameworks which are enacted by jurisdictions to govern the processing of personal data~\cite{european2016}. Examples include the General Data Protection Regulation (GDPR) in the European Union, the California Consumer Privacy Act (CCPA) in the United States, and the Personal Data Protection Act (PDPA) in Singapore~\cite{orcid}.
