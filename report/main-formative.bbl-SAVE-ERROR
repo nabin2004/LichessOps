@@ -635,7 +635,7 @@
       \field{year}{2026}
       \keyw{github,sourcecode}
     \endentry
-    \entry{code_duckdb_sync}{misc}{}
+    \entry{code_MariaDB_sync}{misc}{}
       \name{author}{1}{}{%
         {{hash=e131bdd8a8a93dd44094b3d0568f0609}{%
            family={Oli},
@@ -654,8 +654,8 @@
       \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{howpublished}{\githublink{https://github.com/nabin2004/LichessOps/blob/main/packages/lichess_data/src/lichess_data/load/duckdb_sync.py}}
-      \field{title}{LichessOps: duckdb\_sync.py}
+      \field{howpublished}{\githublink{https://github.com/nabin2004/LichessOps/blob/main/packages/lichess_data/src/lichess_data/load/MariaDB_sync.py}}
+      \field{title}{LichessOps: MariaDB\_sync.py}
       \field{year}{2026}
       \keyw{github,sourcecode}
     \endentry

@@ -6,7 +6,7 @@ The visible components are a Python downloader CLI, checksum validation, boto3 u
 
 \subsection{Tools used}
 
-I chose MinIO because PGN and \texttt{.zst} blobs do not map cleanly onto a columnar warehouse table. Object storage treats them as opaque files with cheap immutability and no semantics. This enables the reprocessing of any month's data later without re-downloading it. Here, I also do the checksum validation for assesing the reliability and authenticity of data. Catching these issues early helps to save time and resources early in the pipeline. Airflow orchestration runs the DAG on each month on first day, so developer does not need to manually click download when Lichess typically publishes. ELT fits my development setup. Here transformation stays on Spark and DuckDB.
+I chose MinIO because PGN and \texttt{.zst} blobs do not map cleanly onto a columnar warehouse table. Object storage treats them as opaque files with cheap immutability and no semantics. This enables the reprocessing of any month's data later without re-downloading it. Here, I also do the checksum validation for assesing the reliability and authenticity of data. Catching these issues early helps to save time and resources early in the pipeline. Airflow orchestration runs the DAG on each month on first day, so developer does not need to manually click download when Lichess typically publishes. ELT fits my development setup. Here transformation stays on Spark and MariaDB.
 
 % \subsection{How}
 
@@ -18,7 +18,7 @@ I chose MinIO because PGN and \texttt{.zst} blobs do not map cleanly onto a colu
 %   \item \textbf{download\_shard}: \texttt{lichess-data download} calls \texttt{download\_month} in \codecite{code_downloader}. The client resumes partial files and can verify SHA256 against Lichess's published sums while bytes still stream.
 %   \item \textbf{upload\_raw}: \texttt{upload\_raw\_shard} in \codecite{code_upload} pushes to \texttt{s3://lichess-raw/} using \codecite{code_s3}. When \texttt{LICHESS\_STORAGE\_BACKEND=local}, upload is a no-op for laptop-only runs.
 %   \item \textbf{validate\_shard}: \texttt{validate\_checksum} in \codecite{code_checksum} re-checks integrity. I treat a failure as a hard stop because the DAG should not proceed to Spark on a bad object.
-%   \item Downstream tasks:  (\texttt{spark\_transform}, \texttt{duckdb\_sync}) consume the raw key which they are preprocessing but depend on this stage finishing cleanly.
+%   \item Downstream tasks:  (\texttt{spark\_transform}, \texttt{MariaDB\_sync}) consume the raw key which they are preprocessing but depend on this stage finishing cleanly.
 % \end{enumerate}
 
 % Bringing up storage uses the Compose \texttt{core} profile from the repo root \texttt{docker compose --profile core up -d} which also starts MinIO and a one-shot job that creates \texttt{lichess-raw}, \texttt{lichess-processed}, and \texttt{mlflow-artifacts}. Retrieval for later stages is literally an S3 GET on the month prefix which analysts or Spark both read the same URI via \codecite{code_storage_config}.
@@ -30,7 +30,7 @@ I chose MinIO because PGN and \texttt{.zst} blobs do not map cleanly onto a colu
   \label{fig:ingestion}
 \end{figure}
 
-For retrieval, \texttt{raw\_s3\_uri(month)} returns the full \texttt{s3://} key, which DuckDB's \texttt{httpfs} extension or Spark's S3 configuration consumes. That indirection is how ingestion meets the brief's ``storage and retrieval'' wording even before any ML features exist.
+For retrieval, \texttt{raw\_s3\_uri(month)} returns the full \texttt{s3://} key, which MariaDB's \texttt{httpfs} extension or Spark's S3 configuration consumes. That indirection is how ingestion meets the brief's ``storage and retrieval'' wording even before any ML features exist.
 
 % \textbf{Environment and operations.} Local runs expect \texttt{AWS\_ENDPOINT\_URL=http://localhost:9000} and MinIO credentials matching the Compose file (\texttt{minioadmin} by default). I document the sequence in \texttt{docs/airflow-ingestion.md} and \texttt{docs/lichess-database-downloader.md}; the coursework log captures the intent. First-time Airflow bring-up with the \texttt{orchestration} profile takes several minutes for Postgres and Redis migrations---I learned to start it before the due date, not the night before. Flower (\texttt{flower} profile) helps inspect Celery workers when a task stays queued.
 

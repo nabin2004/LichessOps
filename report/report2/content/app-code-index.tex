@@ -12,7 +12,7 @@ Table~\ref{tab:code-index} lists major implementation files with GitHub links (\
 \repo{libs/shared/config_loader.py} & YAML config merge \\
 \repo{libs/shared/artifact_manager.py} & Artefact path resolution \\
 \repo{libs/shared/s3.py} & MinIO/S3 client helpers \\
-\repo{libs/shared/storage_config.py} & DuckDB and S3 URI mapping \\
+\repo{libs/shared/storage_config.py} & MariaDB and S3 URI mapping \\
 \repo{libs/shared/logger.py} & Rotating file logging \\
 \repo{services/airflow/dags/lichess_monthly_ingestion.py} & Monthly orchestration DAG \\
 \repo{packages/lichess_data/src/lichess_data/extract/lichess_downloader.py} & Shard download and checksum \\
@@ -20,7 +20,7 @@ Table~\ref{tab:code-index} lists major implementation files with GitHub links (\
 \repo{packages/lichess_data/src/lichess_data/load/upload.py} & Raw upload to MinIO \\
 \repo{services/minio/docker-compose.yml} & Object store and buckets \\
 \repo{packages/lichess_data/src/lichess_data/spark/transform.py} & Spark star-schema transform \\
-\repo{packages/lichess_data/src/lichess_data/load/duckdb_sync.py} & Parquet $\rightarrow$ DuckDB sync \\
+\repo{packages/lichess_data/src/lichess_data/load/MariaDB_sync.py} & Parquet $\rightarrow$ MariaDB sync \\
 \repo{packages/lichess_data/src/lichess_data/preprocessing/transforms.py} & Pandas feature stages \\
 \repo{packages/lichess_data/src/lichess_data/extract/pgn_parser.py} & Legacy PGN parser \\
 \repo{packages/lichess_features/src/lichess_features/split.py} & Feast split and temporal cut \\

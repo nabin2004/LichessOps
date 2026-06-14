@@ -1,7 +1,7 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-I implemented an end-to-end MLOps pipeline for the Lichess Open Database: monthly ingestion into MinIO with checksum gates, Spark and Pandas transformation into Parquet and DuckDB, Feast-backed feature splits validated by Great Expectations, sklearn training with MLflow tracking, FastAPI deployment from the model registry, and observability through Prometheus, Grafana, logs, and optional Evidently drift reports. Each stage maps to version-controlled code in LichessOps \githubparencite{lichessops_repo}, cited in this report and listed in Appendix~\ref{app:code-index}.
+I implemented an end-to-end MLOps pipeline for the Lichess Open Database: monthly ingestion into MinIO with checksum gates, Spark and Pandas transformation into Parquet and MariaDB, Feast-backed feature splits validated by Great Expectations, sklearn training with MLflow tracking, FastAPI deployment from the model registry, and observability through Prometheus, Grafana, logs, and optional Evidently drift reports. Each stage maps to version-controlled code in LichessOps \githubparencite{lichessops_repo}, cited in this report and listed in Appendix~\ref{app:code-index}.
 
 The work meets the module outcome I read as central to Task~2---appropriate structure for storage, retrieval, and analytical processing with justified software at each step. Raw games are stored as immutable objects, retrieved by URI for SQL and ML alike, and processed through tools chosen for columnar scale and temporal correctness. Limitations (host-based serving, manual drift) are documented openly in the reflection rather than hidden.
 

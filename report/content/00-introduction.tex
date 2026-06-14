@@ -3,56 +3,60 @@
 
 Chess has been a solid testbed for evaluating and performing machine learning tasks. In this report, we implement Chess Game Outcome prediction. This machine learning task is economically valuable for platforms like Lichess.org or Chess.com for making subscriptions valuable for users and also providing meaningful insights for improving their games. All data are taken from Lichess's monthly database dump available at database.lichess.org, which publishes the dataset with flexible licensing. This machine learning modeling helps users identify weaknesses and strengths against their opponents, saving time and providing valuable insights. Without this kind of modeling, it would require extensive playing experience to determine whether a particular opening strategy is helpful.
 
-\section{Machine Learning Objective}
+\section{Machine Learning Problem}
 \label{sec:objective}
+The behaviour of the game outcome in chess game can be framed as multi-class classification problem where the number of possible game outcome is win, draw and lose. Here, we are using the historical games data from lichess platform on supervised machine learning task. The main goal of the model would be to predict the factors influencing the game results. The scope of our machine learning model is limited to serve as a foundational component for analytical tool that can support player improvement and strategic understanding through data-driven evaluation.
 
-This project formulates the prediction of chess game outcomes as a multi-class classification problem, where the target variable represents the final result of a game with three possible classes: win (1), loss (0), and draw (\(1/2\)). Our machine learning model leverages historical game data along with player- and opening-related features to learn patterns that influence match outcomes.
 
-\subsection*{Feature Vector}
-The input feature vector is defined as:
-\[
-\mathbf{x} =
-\begin{bmatrix}
-E_{\text{p}} \\
-E_{\text{o}} \\
-C \\
-\text{ECO} \\
-F_{\text{eco}} \\
-T \\
-S_{\text{eco}} \\
-H_{\text{wr}} \\
-O_{\text{wr}}
-\end{bmatrix}
-\]
 
-\subsection*{Target Variable}
-The outcome \(y\) belongs to the set of possible results:
-\[
-y \in \left\{0,\ \tfrac{1}{2},\ 1\right\}
-\]
-where
-\[
-\begin{aligned}
-y &= 1      &&\text{(Win)}   \\
-y &= 0      &&\text{(Loss)}  \\
-y &= \tfrac{1}{2} &&\text{(Draw)}
-\end{aligned}
-\]
+% This project formulates the prediction of chess game outcomes as a multi-class classification problem, where the target variable represents the final result of a game with three possible classes: win (1), loss (0), and draw (\(1/2\)). Our machine learning model leverages historical game data along with player- and opening-related features to learn patterns that influence match outcomes.
 
-\subsection*{Feature Descriptions}
-The features are defined as follows:
-\[
-\begin{aligned}
-E_{\text{p}}   &= \text{Player Elo rating} \\
-E_{\text{o}}   &= \text{Opponent Elo rating} \\
-C              &= \text{Player color (white/black encoded)} \\
-\text{ECO}     &= \text{ECO opening code (encoded)} \\
-F_{\text{eco}} &= \text{Opening family} \\
-T              &= \text{Time control (blitz/rapid/classical)} \\
-S_{\text{eco}} &= \text{Player ECO performance score} \\
-H_{\text{wr}}  &= \text{Head-to-head win rate} \\
-O_{\text{wr}}  &= \text{Opening population win rate}
-\end{aligned}
-\]
+% \subsection*{Feature Vector}
+% The input feature vector is defined as:
+% \[
+% \mathbf{x} =
+% \begin{bmatrix}
+% E_{\text{p}} \\
+% E_{\text{o}} \\
+% C \\
+% \text{ECO} \\
+% F_{\text{eco}} \\
+% T \\
+% S_{\text{eco}} \\
+% H_{\text{wr}} \\
+% O_{\text{wr}}
+% \end{bmatrix}
+% \]
 
-By learning from these features, the model aims to capture how different contextual and strategic factors influence game results. Beyond prediction, the learned patterns can be used to analyze player performance across different openings and time controls, providing insights into strengths and weaknesses in specific game situations. While our machine learning model is not designed as a full chess coaching engine, it is intended to serve as a foundational component for analytical tools that can support player improvement and strategic understanding through data-driven evaluation.
+% \subsection*{Target Variable}
+% The outcome \(y\) belongs to the set of possible results:
+% \[
+% y \in \left\{0,\ \tfrac{1}{2},\ 1\right\}
+% \]
+% where
+% \[
+% \begin{aligned}
+% y &= 1      &&\text{(Win)}   \\
+% y &= 0      &&\text{(Loss)}  \\
+% y &= \tfrac{1}{2} &&\text{(Draw)}
+% \end{aligned}
+% \]
+
+% \subsection*{Feature Descriptions}
+% The features are defined as follows:
+% \[
+% \begin{aligned}
+% E_{\text{p}}   &= \text{Player Elo rating} \\
+% E_{\text{o}}   &= \text{Opponent Elo rating} \\
+% C              &= \text{Player color (white/black encoded)} \\
+% \text{ECO}     &= \text{ECO opening code (encoded)} \\
+% F_{\text{eco}} &= \text{Opening family} \\
+% T              &= \text{Time control (blitz/rapid/classical)} \\
+% S_{\text{eco}} &= \text{Player ECO performance score} \\
+% H_{\text{wr}}  &= \text{Head-to-head win rate} \\
+% O_{\text{wr}}  &= \text{Opening population win rate}
+% \end{aligned}
+% \]
+
+
+% the model aims to capture how different contextual and strategic factors influence game results. Beyond prediction, the learned patterns can be used to analyze player performance across different openings and time controls, providing insights into strengths and weaknesses in specific game situations. While our machine learning model is not designed as a full chess coaching engine, it is intended to serve as a foundational component for analytical tools that can support player improvement and strategic understanding through data-driven evaluation.

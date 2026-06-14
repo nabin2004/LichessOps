@@ -32,15 +32,14 @@ automated machine learning pipeline for supervised model training and serving.
 
 This pipeline automates the ingestion of Lichess's monthly public game data using the Apache Airflow orchestrator. This stage covers the \emph{extract} and \emph{load} steps of the ELT pattern (\cref{fig:elt-flow}; \cref{ch:storage-planning}): the monthly shard is downloaded over HTTPS, its integrity is verified (SHA256), and the compressed file is landed in MinIO as a single immutable object with no parsing or reshaping.
 
-Decompression, PGN parsing, and curated star-schema Parquet are performed in preprocessing (\cref{sec:stage-preprocessing}). We use MinIO as an S3-compatible store for raw and processed data; Parquet partitions in the processed bucket feed DuckDB and downstream analysts and ML tooling.
+Decompression, PGN parsing, and curated star-schema Parquet are performed in preprocessing (\cref{sec:stage-preprocessing}). We use MinIO as an S3-compatible store for raw and processed data; Parquet partitions in the processed bucket feed MariaDB and downstream analysts and ML tooling.
 
 \section{Data pre-processing}
 \label{sec:stage-preprocessing}
 
 In preprocessing, a PySpark job implements the \emph{transform} step: it reads the raw \texttt{.zst} stream from MinIO, decompresses the Zstandard payload, parses each game into header-derived fields (and optionally move rows), builds the star-schema DataFrames (\texttt{fact\_games}, dimensions, optionally \texttt{fact\_moves}), and writes partitioned Parquet to the processed bucket.
 
-After Spark writes those star‑schema Parquet files to MinIO, they are loaded into DuckDB, the columnar offline store. DuckDB holds the \texttt{fact\_games} and dimension tables, enabling fast SQL for both validation and feature generation. A Great Expectations checkpoint runs on the entire DuckDB table (or the underlying Parquet) before any split. It checks column presence, data types, null ratios, and allowed value ranges. If validation fails, the pipeline halts and sends an alert; if it passes, an artefact is produced certifying data quality. Feast (with DuckDB as its offline store) executes point‑in‑time feature retrieval on the full historical dataset. Time‑dependent features (e.g., player win‑rate over the last 30 days) are computed using only information available before each game’s timestamp, preventing temporal leakage. The resulting feature DataFrame now containing all features and the target is split chronologically (e.g., 80 \% train, 20 \% test). Because features were built on the whole dataset before splitting, both partitions contain every column; the “columns missing in training/test” problem is avoided entirely.  
-
+After Spark writes those star‑schema Parquet files to MinIO, they are loaded into MariaDB, the columnar database which offers fast read. The tables containing the dimensions and the fact games are stored in MariaDB, so that fast SQL can be used for both validation. Great Expectations checkpoint is performed on the whole MariaDB table (or the corresponding Parquet) prior to any split. Verifies columns, data types, null ratios, and ranges of data. The pipeline stops if the validation fails and an alert is sent otherwise, an artefact is created which certifies the data quality. Feast (with MariaDB as its offline store) supports the point in time feature retrieval for the entire historical data. The time-dependent features (e.g., win rate of the players in the last 30 days) are calculated based on only data prior to the game's timestamp to prevent temporal leakage. This will create a feature DataFrame, which now includes all features and the target, split chronologically (e.g., 80 \% train, 20 \% test). Since features were created on the entire data set before the split, both partitions have all columns and there is no problem with “columns missing in training/test”.
 
 \begin{figure}[htbp]
   \centering
@@ -59,9 +58,7 @@ After Spark writes those star‑schema Parquet files to MinIO, they are loaded i
   \caption{Model training: load train/test arrays from validated artefacts, fit the model, compute metrics, register the best run in MLflow, and retain a containerised, reproducible training environment.}
   \label{fig:plan-model-trainer}
 \end{figure}
-
-Training reads transform bundles and logs git, configs, and metrics in MLflow (\cref{fig:plan-model-trainer}).
-Research approves hypotheses; engineers run sweeps with sequestered test data until final evaluation exports.
+The model training stage reads  data from database. Here, It uses the Feast for defining the feature from star schema. 
 
 \section{Model deployment}
 \label{sec:stage-deployment}

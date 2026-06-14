@@ -8,7 +8,7 @@
   \label{fig:reflection-iterations}
 \end{figure}
 
-% Task~1 described a pipeline I had not yet wired: Airflow orchestration, MinIO layers, Spark transform, DuckDB analytics, Feast for temporal features, MLflow registry, FastAPI serving, and Prometheus plus Evidently for observability. The implementation in this repository follows that spine closely. Where the live system diverges, the reasons are mostly resource constraints on a student laptop rather than a change of mind about architecture.
+% Task~1 described a pipeline I had not yet wired: Airflow orchestration, MinIO layers, Spark transform, MariaDB analytics, Feast for temporal features, MLflow registry, FastAPI serving, and Prometheus plus Evidently for observability. The implementation in this repository follows that spine closely. Where the live system diverges, the reasons are mostly resource constraints on a student laptop rather than a change of mind about architecture.
 
 % \textbf{Initial plan versus what I built.} I planned ELT from the start and stuck with it. The surprise was how much shared plumbing (\codecite{code_config_loader}, artefact paths, S3 helpers) mattered before any stage felt finished. I added the \texttt{use\_elt} DAG flag after fighting Spark memory on a single-node cluster; the legacy extract path is not in the original diagram but saved weeks of blocked progress. Config and artefact managers from my early draft notes became real modules instead of remaining bullet points.
 
@@ -20,4 +20,4 @@
 
 % \textbf{Discrepancies worth naming.} Task~1 showed decompression inside ingestion; I deferred decompress to Spark or the legacy extract precisely because ELT keeps the raw blob bit-identical to Lichess. Task~1 implied automated alerts to Slack; I rely on Airflow email and log files today. Task~1's monitoring diagram suggested continuous drift scoring; Evidently runs when I invoke it. None of these invalidate the architecture---they are scope cuts I would schedule if this were a team sprint.
 
-% \textbf{Personal takeaway.} Building the pipeline taught me more about data engineering than tuning the classifier. Chess data is messy, large, and interesting; tooling choices (MinIO, DuckDB, Airflow) only earn their keep when retrieval paths and validation gates are boringly reliable. I am satisfied the repository demonstrates implementation depth; the reflection is where I acknowledge what remains stubbed rather than pretending the last ten percent is done.
+% \textbf{Personal takeaway.} Building the pipeline taught me more about data engineering than tuning the classifier. Chess data is messy, large, and interesting; tooling choices (MinIO, MariaDB, Airflow) only earn their keep when retrieval paths and validation gates are boringly reliable. I am satisfied the repository demonstrates implementation depth; the reflection is where I acknowledge what remains stubbed rather than pretending the last ten percent is done.

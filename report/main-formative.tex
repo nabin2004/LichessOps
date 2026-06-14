@@ -16,19 +16,29 @@
 \chapter*{Abstract}
 \phantomsection
 \addcontentsline{toc}{chapter}{Abstract}
+ 
+This report outlines the End to End Machine learning pipeline for Data Management and Machine learning operations for supervised multi-class classification problem in chess domain.
+We select the Lichess Open Database as our dataset for its real world scale. The report details the data storage plan, justifies the star schema design, and presents an ELT pipeline covering data ingestion, pre-processing, model development, deployment, and monitoring. The design is justified with industry and research literature and it also anticipates iterative refinement as implementation begins.
 
-Online chess platforms such as Lichess provide a variety of analytical tools, including engine evaluation, game analysis, and coaching features which enhances experience of players who supports subscription-based services. In this project, we develop a machine learning model for predicting chess game outcomes using historical game data. Given features such as opening strategy, player ratings, time controls, and other game-related attributes. The model predicts whether a game is likely to result in a win, loss, or draw. Beyond outcome prediction, the system can be used to identify player strengths and weaknesses by analyzing performance patterns across different openings, rating ranges, and time controls. Such insights may help players improve their gameplay and prepare more effectively against specific opponents.
-
-This project uses the monthly game dumps provided by database.lichess.org, which are distributed in compressed Portable Game Notation (PGN) format using Zstandard compression. A data processing pipeline is implemented to automatically download, decompress, parse, and transform these datasets into machine-learning-ready features. The resulting dataset is used to train and evaluate predictive models for chess outcome classification, where the target labels are encoded as 1 (win), 0 (loss), and 0.5 (draw).
-
-
-
-
+% machine learning candidate datasets. We select the Lichess Open Database. It also outlines
+% an MLOps pipeline covering data ingestion, pre-processing, model development, deployment,
+% and monitoring, serving both interactive analysts (notebooks) and an automated model-training
+% workflow. The design is justified with industry and research literature and it also anticipates
+% iterative refinement as implementation begins.
 
 
+% Online chess platforms such as Lichess provide a variety of analytical tools, including engine evaluation, game analysis, and coaching features which enhances experience of players who supports subscription-based services. In this project, we develop a machine learning model for predicting chess game outcomes using historical game data. Given features such as opening strategy, player ratings, time controls, and other game-related attributes. The model predicts whether a game is likely to result in a win, loss, or draw. Beyond outcome prediction, the system can be used to identify player strengths and weaknesses by analyzing performance patterns across different openings, rating ranges, and time controls. Such insights may help players improve their gameplay and prepare more effectively against specific opponents.
+
+% This project uses the monthly game dumps provided by database.lichess.org, which are distributed in compressed Portable Game Notation (PGN) format using Zstandard compression. A data processing pipeline is implemented to automatically download, decompress, parse, and transform these datasets into machine-learning-ready features. The resulting dataset is used to train and evaluate predictive models for chess outcome classification, where the target labels are encoded as 1 (win), 0 (loss), and 0.5 (draw).
 
 
-% This formative report combines CMP6230 Task~1 (planning and design) and Task~2 (implementation) for a supervised learning pipeline on the Lichess Open Database. Three candidate datasets were evaluated; Lichess was selected for scale, embedded labels, and monthly refresh under a \textsc{cc}0 licence. An initial data storage plan and MLOps pipeline design cover ingestion through monitoring for both notebook analysts and automated training. The final pipeline plan and runnable implementation---orchestrated with Airflow, MinIO, Spark, DuckDB, Feast, Great Expectations, MLflow, FastAPI, and Prometheus---refine that design in the LichessOps repository. The report closes with reflective discussion of plan versus build and further work for the summative submission.
+
+
+
+
+
+
+% This formative report combines CMP6230 Task~1 (planning and design) and Task~2 (implementation) for a supervised learning pipeline on the Lichess Open Database. Three candidate datasets were evaluated; Lichess was selected for scale, embedded labels, and monthly refresh under a \textsc{cc}0 licence. An initial data storage plan and MLOps pipeline design cover ingestion through monitoring for both notebook analysts and automated training. The final pipeline plan and runnable implementation---orchestrated with Airflow, MinIO, Spark, MariaDB, Feast, Great Expectations, MLflow, FastAPI, and Prometheus---refine that design in the LichessOps repository. The report closes with reflective discussion of plan versus build and further work for the summative submission.
 
 
 \tableofcontents

@@ -63,7 +63,7 @@ We use the Apache Airflow for orchestrating the data ingestion pipeline. Here, t
 First the data is downloaded from lichess Database and stored into Minio Object store. Minio is an S3-compatible object store used for storing the  …………………………….
 After download the file is checked against the checksum validation which helps to check whether the file is corrupt or not. 
 
-If the file is found invalid it sends the alert message, else the orchestrator starts decompressing the compressed file. The compressed file then goes into the data preprocessing and gets stored in the DuckDB. DuckDB is the modern columnar database optimised for the columnar parquet data storage. 
+If the file is found invalid it sends the alert message, else the orchestrator starts decompressing the compressed file. The compressed file then goes into the data preprocessing and gets stored in the MariaDB. MariaDB is the modern columnar database optimised for the columnar parquet data storage. 
 
 
 Data Pre-processing
@@ -78,7 +78,7 @@ We use the Pandas library to perform data transformation, cleansing, and schema 
 
 
 Model development
-Data is successfully loaded into our DuckDB columnar database after which we were able to perform analytics on our datasets. Now at this stage we can use the same columnar database as our data source for model development. Here we do feature engineering and final training of a model to predict the game outcomes. Given the data of the user and the opening that particular user is thinking of using we can highlight the game outcome. Using this data chess players can decide which openings to use. This feature also helps chess players to know which opening is considered weak for certain levels of chess. Players use it for winning the match or improving their match.
+Data is successfully loaded into our MariaDB columnar database after which we were able to perform analytics on our datasets. Now at this stage we can use the same columnar database as our data source for model development. Here we do feature engineering and final training of a model to predict the game outcomes. Given the data of the user and the opening that particular user is thinking of using we can highlight the game outcome. Using this data chess players can decide which openings to use. This feature also helps chess players to know which opening is considered weak for certain levels of chess. Players use it for winning the match or improving their match.
 This is a multi-class classification task classifying the game prediction. The possible output for our model is win, lose, draw which are represented as 1, 0, ½ . 
  
 Model Deployment
