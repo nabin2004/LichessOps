@@ -29,16 +29,12 @@ As shown in Figure \ref{fig:mariadb-connector}, we use the mysql connnector whic
 
 
 \section{Outlier Detection}
-To assess the presence of anomalous rating values, I examined the distribution of 
-white player Elo ratings shown in Figure~\ref{fig:white_elo_distribution}. The 
-histogram reveals a plausible range from approximately 800 to 2400, with no 
-observations falling below 800 or exceeding 2400. Ratings below 200 or above 2800 
-are rare but entirely possible in a real-world chess dataset. They correspond to 
-absolute beginners and titled grandmasters, respectively. Because these values 
-reflect genuine player skill levels rather than data entry errors or measurement 
-artefacts, I retained them without modification. No further outlier removal or 
-capping was applied, ensuring that the subsequent machine learning pipeline 
-operates on authentic distributional characteristics.
+For the purpose of assessing the presence of anomalous rating values, I examined the distribution of 
+white player Elo ratings which is shown in Figure~\ref{fig:white_elo_distribution}. The 
+histogram reveals particular range from approximately 800 to 2400, with no 
+observations falling below 800 or exceeding 2400. Considering the fact that we are training on 2013 AD data for Lichess platform back when Lichess was not popular, the ratings at that time were below 200 or above 2800 
+were rare but entirely possible in a real-world chess dataset. Those kinds of chess ratings belongs to 
+either absolute beginners or titled grandmasters. Since, these values represents the genuine skills level which are necessary for the model to learn the data distribution, so I decided to keep them. 
 
 \begin{figure}[htbp]
   \centering
@@ -57,27 +53,18 @@ operates on authentic distributional characteristics.
 \end{figure}
 
 
-Understanding the underlying distribution of player ratings is essential for 
-assessing the representativeness of the dataset and for anticipating model behaviour. 
-Figure~\ref{fig:white_elo_game_results} segments White Elo ratings by the final 
-game outcome. The overlapping density curves show that winning players (White wins) 
-tend to have higher median ratings than losing players (White losses), whereas 
-draws are most frequent at intermediate to high rating levels, reflecting the 
-increased likelihood of balanced play among stronger opponents. This pattern is 
-consistent with the expectation that Elo rating differences correlate positively 
-with win probability. 
+For my ML tasks, understanding the distribution of player ratings is essential for 
+generalizing the model's performance. Figure~\ref{fig:white_elo_game_results} shows White Elo ratings by the final 
+game outcome. In the figure the density curves show that winning players
+tend to have higher median ratings than losing players, whereas 
+draws are most frequent at intermediate to high rating levels which reflects the 
+increased likelihood of balanced play among stronger opponents. 
 
-
-Figure~\ref{fig:rating_by_outcome} presents the rating distribution of all players 
-(both colours) grouped by the game outcome from their perspective. The violin 
-plots clearly show that winners (both White and Black) have a higher median rating 
+Figure~\ref{fig:rating_by_outcome} presents the rating distribution of both players 
+grouped by the game outcome from their perspective. The violin 
+plots clearly show that winners have a higher median rating 
 and a narrower interquartile range compared to losers, whose rating distribution 
-spreads further into the lower tail. Draws occupy a middle ground, with a 
-distribution centred around approximately 2000 Elo. Together, these figures 
-confirm that the dataset contains meaningful rating signals and that no 
-systematic data collection error distorts the relationship between rating and 
-outcome. Because extreme ratings (below 800 or above 2800) are rare but valid, 
-they were retained as authentic representatives of beginner and master-level play.
+spreads further into the lower tail. 
 
 
 \begin{figure}[htbp]
